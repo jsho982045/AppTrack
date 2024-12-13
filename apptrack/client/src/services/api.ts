@@ -14,3 +14,23 @@ export const fetchApplications = async (): Promise<JobApplication[]> => {
         throw error;
     }
 }
+
+export const createApplication = async (application: Omit<JobApplication, '_id'>): Promise<JobApplication> => {
+    try{
+        const response = await fetch(`${API_URL}/applications`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(application)
+        });
+        if(!response.ok) {
+            throw new Error('Failed to create application');
+        }
+        return response.json();
+    } catch(error) {
+        console.error('Error creating application:', error);
+        throw error;
+    }
+};
+
