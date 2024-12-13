@@ -1,7 +1,7 @@
 import express from 'express';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
-import { getAllApplications, createApplication } from './controllers/JobApplication';
+import { getAllApplications, createApplication, deleteApplication } from './controllers/JobApplication';
 import cors from 'cors';
 
 
@@ -27,6 +27,7 @@ mongoose.connect(process.env.MONGODB_URI!)
 
 app.get('/api/applications', getAllApplications);
 app.post('/api/applications', createApplication);
+app.delete('/api/applications/:id', deleteApplication);
 
 app.listen(port, () => {
     console.log(`Server running on port ${port}`);

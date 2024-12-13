@@ -1,13 +1,17 @@
 import { useState, useEffect } from 'react';
 import { JobApplication } from '../types';
-import { createApplication, fetchApplications } from '../services/api';
+import { createApplication, fetchApplications, deleteApplication, updateApplication } from '../services/api';
 import AddApplicationModal from './AddApplicationModal';
+import ApplicationActions from './ApplicationActions';
+import EditApplicationModal from './EditApplicationModal';
 
 const Dashboard = () => {
     const [applications, setApplications] = useState<JobApplication[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const[isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const[currentApplication, setCurrentApplication] = useState<JobApplication | null>(null);
 
     const handleAddApplication = async (newApplication: Omit<JobApplication, '_id'>) => {
         try{
@@ -17,6 +21,34 @@ const Dashboard = () => {
         }catch(err){
             setError('Failed to add application');
             console.error('Error adding application:', err);
+        }
+    };
+
+    const handleDeleteApplication = async (id: string) => {
+        try {
+            await deleteApplication(id);
+            setApplications(prev => prev.filter(app => app._id !== id));
+        } catch(err) {
+            setError('Failed to delete application');
+            console.error('Error deleting applications:', err);
+        } 
+    };
+
+    const handleEditApplication = (application: JobApplication) => {
+        setCurrentApplication(application);
+        setIsEditModalOpen(true);
+    };
+
+    const handleUpdateApplication = async (updatedApplication: JobApplication) => {
+        try{
+            const updated = await updateApplication(updatedApplication._id!, updatedApplication);
+            setApplications(prev => prev.map(app => 
+                app._id === updated._id ? updated : app
+            ));
+            setIsEditModalOpen(false);
+        } catch (err) {
+            setError('Failed to update Application');
+            console.error('Error updating applications:', err);
         }
     };
 
@@ -110,6 +142,10 @@ const Dashboard = () => {
                                 `}>
                                     {app.status.charAt(0).toUpperCase() + app.status.slice(1)}
                                 </span>
+                                <ApplicationActions 
+                                    onDelete={() => handleDeleteApplication(app._id!)}
+                                    onEdit={() => handleEditApplication(app)}
+                                    />
                             </div>
                         </div>
                     ))}
@@ -120,6 +156,16 @@ const Dashboard = () => {
                     onClose={() => setIsModalOpen(false)}
                     onSubmit={handleAddApplication}
                 />
+
+                {currentApplication && (
+                    <EditApplicationModal
+                        isOpen={isEditModalOpen}
+                        onClose={() => setIsEditModalOpen(false)}
+                        onSubmit={handleUpdateApplication}
+                        application={currentApplication}
+                        />
+                )}
+                )
             </div>
         </div>
     );
