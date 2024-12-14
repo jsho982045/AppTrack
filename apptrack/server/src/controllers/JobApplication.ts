@@ -35,3 +35,24 @@ export const deleteApplication = async (req: Request, res: Response): Promise<vo
         res.status(500).json({ message: 'Error deleting application', error });
     }
 };
+
+export const updateApplication = async (req: Request, res: Response): Promise<void> => {
+    try{
+        const { id } = req.params;
+        const updatedApplication = await JobApplication.findByIdAndUpdate(
+            id, 
+            req.body,
+            { new: true }
+        );
+
+        if(!updatedApplication) {
+            res.status(404).json({ message: 'Application not found '});
+            return;
+        }
+
+        res.json(updatedApplication);
+    } catch (error) {
+        res.status(500).json({ message: 'Error updating application', error });
+        
+    }
+};
