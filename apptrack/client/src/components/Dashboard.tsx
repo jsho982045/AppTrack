@@ -165,7 +165,6 @@ const Dashboard = () => {
                         application={currentApplication}
                         />
                 )}
-                )
             </div>
         </div>
     );
