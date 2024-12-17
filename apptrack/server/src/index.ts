@@ -20,9 +20,11 @@ app.use((req, res, next) => {
     next();
 });
 
-mongoose.connect(process.env.MONGODB_URI!)
+mongoose.connect(process.env.MONGODB_URI! + '/apptrack')
     .then(() => {
         console.log('Connected to MongoDB Atlas successfully');
+        console.log('Current database:', mongoose.connection.db?.databaseName);
+        console.log('Available collections:', mongoose.connection.db?.collections());
     })
     .catch((error => {
         console.error('MongoDB connection error: ', error);
