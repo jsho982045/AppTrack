@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-interface ITrainingEmail {
+export interface ITrainingEmail {
     subject: string;
     content: string;
     from: string;

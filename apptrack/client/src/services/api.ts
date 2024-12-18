@@ -1,3 +1,4 @@
+// client/src/services/api.ts
 import { JobApplication } from '../types';
 
 const API_URL = 'http://localhost:3001/api';

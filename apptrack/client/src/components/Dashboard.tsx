@@ -1,9 +1,10 @@
+// client/src/components/Dashboard.tsx
 import { useState, useEffect } from 'react';
 import { JobApplication } from '../types';
 import { createApplication, fetchApplications, deleteApplication, updateApplication } from '../services/api';
 import AddApplicationModal from './AddApplicationModal';
-import ApplicationActions from './ApplicationActions';
 import EditApplicationModal from './EditApplicationModal';
+import ApplicationTable from './ApplicationTable';
 
 const Dashboard = () => {
     const [applications, setApplications] = useState<JobApplication[]>([]);
@@ -120,35 +121,14 @@ const Dashboard = () => {
                         </div>
                     )}
 
-                    {applications.map(app => (
-                        <div
-                            key={app._id}
-                            className="border-b border-gray-200 py-4 last:border-0"
-                        >
-                            <div className="flex justify-between items-start">
-                                <div>
-                                    <h3 className="font-medium">{app.company}</h3>
-                                    <p className="text-gray-600">{app.position}</p>
-                                    <p className="text-sm text-gray-500">
-                                        Applied: {new Date(app.dateApplied).toLocaleDateString()}
-                                    </p>
-                                </div>
-                                <span className={`
-                                    px-2 py-1 rounded-full text-sm
-                                    ${app.status === 'applied' ? 'bg-blue-100 text-blue-800' : ''}
-                                    ${app.status === 'interviewing' ? 'bg-yellow-100 text-yellow-800' : ''}
-                                    ${app.status === 'rejected' ? 'bg-red-100 text-red-800' : ''}
-                                    ${app.status === 'accepted' ? 'bg-green-100 text-green-800' : ''}
-                                `}>
-                                    {app.status.charAt(0).toUpperCase() + app.status.slice(1)}
-                                </span>
-                                <ApplicationActions 
-                                    onDelete={() => handleDeleteApplication(app._id!)}
-                                    onEdit={() => handleEditApplication(app)}
-                                    />
-                            </div>
-                        </div>
-                    ))}
+                    {!loading && !error && applications.length > 0 && (
+                        <ApplicationTable 
+                            applications={applications} 
+                            onDelete={handleDeleteApplication}
+                            onEdit={handleEditApplication}
+                        />
+                        
+                    )}
                 </div>
 
                 <AddApplicationModal
@@ -163,7 +143,7 @@ const Dashboard = () => {
                         onClose={() => setIsEditModalOpen(false)}
                         onSubmit={handleUpdateApplication}
                         application={currentApplication}
-                        />
+                    />
                 )}
             </div>
         </div>

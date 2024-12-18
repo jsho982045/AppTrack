@@ -4,5 +4,6 @@ export interface JobApplication {
     position: string;
     dateApplied: Date;
     status: 'applied' | 'interviewing' | 'rejected' | 'accepted';
+    emailId?: string;
 }
 

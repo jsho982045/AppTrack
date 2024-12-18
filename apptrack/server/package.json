@@ -6,19 +6,23 @@
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "collect-data": "ts-node src/scripts/runDataCollection.ts"
+    "collect-data": "ts-node src/scripts/runDataCollection.ts",
+    "test-processor": "ts-node src/scripts/testProcessor.ts"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@tensorflow/tfjs-node": "^4.22.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "google-auth-library": "^9.15.0",
     "googleapis": "^144.0.0",
     "mongoose": "^8.8.4",
+    "natural": "^8.0.1",
+    "stopword": "^3.1.3",
     "ts-node": "^10.9.2"
   },
   "devDependencies": {
