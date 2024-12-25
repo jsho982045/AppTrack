@@ -1,48 +1,18 @@
 // server/src/services/gmail.ts
-import { google } from 'googleapis';
+import { google, gmail_v1 } from 'googleapis';
 import { Token } from '../models/Token';
 import { JobApplication } from '../models/JobApplication';
 import { getGmailClient } from '../auth/google';
+import { parseJobEmail, isJobApplication } from '../utils/jobParser';
+import { GaxiosResponse } from 'gaxios';
 
-interface ParsedJobInfo {
-    company: string;
-    position: string;
-    dateApplied: Date;
-    status: 'applied';
-    emailConfirmation: string;
-}
 
-const parseJobEmailContent = (email: any): ParsedJobInfo | null => {
-    const headers = email.data.payload.headers;
-    const subject = headers.find((h: any) => h.name === 'Subject')?.value || '';
-    const from = headers.find((h: any) => h.name === 'From')?.value || '';
-    const body = email.data.snippet || '';
-
-    // Extract company name (usually in the from field or domain)
-    let company = from.match(/([^<@]+)@/) 
-        ? from.match(/@([^.]+)/)[1] 
-        : from.split('<')[0].trim();
-    company = company.charAt(0).toUpperCase() + company.slice(1);
-
-    // Try to extract position from subject
-    const position = subject.includes('application') 
-        ? subject.split('application')[0].trim()
-        : 'Position Not Found';
-
-    return {
-        company,
-        position,
-        dateApplied: new Date(),
-        status: 'applied',
-        emailConfirmation: body
-    };
-};
+type GmailMessagePart = gmail_v1.Schema$MessagePart;
 
 export const checkForNewApplications = async () => {
     try {
         const tokenDoc = await Token.findOne();
         console.log('Foundn token document:', tokenDoc);
-
         if (!tokenDoc) {
             throw new Error('No authentication token found');
         }
@@ -65,9 +35,33 @@ export const checkForNewApplications = async () => {
                 id: message.id!,
                 format: 'full'
             });
+            
+            const payload = email.data.payload;
+            if(!payload || !payload.headers) {
+                console.log('Skipping email with invalid structure');
+                continue;
+            }
 
-            const jobInfo = parseJobEmailContent(email);
-            console.log('Parsed job info:', jobInfo);
+
+            const headers = payload.headers;
+            const subject = 
+            headers.find((h) => h.name === 'Subject')?.value || '';
+            const from = 
+            headers.find((h) => h.name === 'From')?.value || '';
+            const fullBody = decodeEmailBody(payload);
+
+            if(!isJobApplication(from, subject)) {
+                console.log("Not a job application email, skipping...");
+                continue;
+            }
+
+            const jobInfo = parseJobEmail({
+                subject,
+                content: fullBody,
+                from,
+                receivedDate: new Date(),
+                emailId: message.id!
+            });
             
             if (jobInfo) {
                 // Check if this application already exists
@@ -90,9 +84,35 @@ export const checkForNewApplications = async () => {
                 }
             }
         }
-
             console.log('Completed checking for new applications');
     } catch (error) {
         console.error('Error checking for new applications:', error);
     }
 };
+
+function decodeEmailBody(payload: gmail_v1.Schema$MessagePart): string {
+    let decoded = '';
+
+    function walkParts(parts?: GmailMessagePart[]) {
+        if (!parts) return;
+        for (const part of parts) {
+            if (part.parts && part.parts.length > 0){
+                walkParts(part.parts);
+            } else {
+                if (part.mimeType === 'text/plain' && part.body?.data) {
+                    const buff = Buffer.from(part.body.data, 'base64');
+                    decoded += buff.toString('utf-8') + '\n';
+                }
+            }
+        }
+    }
+    if (payload.parts && payload.parts.length > 0) {
+        walkParts(payload.parts);
+    } else if (
+        payload.mimeType === 'text/plain' && 
+        payload.body?.data
+    ) {
+        decoded = Buffer.from(payload.body.data, 'base64').toString('utf-8');
+    }
+    return decoded;
+}
