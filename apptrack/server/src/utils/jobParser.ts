@@ -1,13 +1,5 @@
-// server/src/utils/jobParser.ts
+// jobParser.ts
 import { classifyEmail } from "./trainParser";
-
-export interface ATSProvider {
-    name: string;
-    domains: string[];
-    isATS: (from: string) => boolean;
-    parseCompany?: (email: { subject: string, content: string }) => string | null;
-    parsePosition?: (email: { subject: string, content: string }) => string | null;
-}
 
 export interface ParsedJobInfo {
     company: string;
@@ -17,271 +9,147 @@ export interface ParsedJobInfo {
     emailId: string;
 }
 
-export const atsProviders: ATSProvider[] = [
+const JOB_KEYWORDS = [
+    'applied',
+    'application',
+    'thank you for applying',
+    'position',
+    'role',
+    'engineer',
+    'developer',
+    'software'
+];
+
+const EXCLUDE_KEYWORDS = [
+    'newsletter',
+    'subscription',
+    'receipt',
+    'order',
+    'purchase',
+    'payment',
+    'invoice'
+];
+
+export function isJobApplication(from: string, subject: string): boolean {
+    const lowerSubject = subject.toLowerCase();
+    const lowerFrom = from.toLowerCase();
+
+    // Check known providers
+    for (const provider of providers) {
+        if (provider.test(from)) return true;
+    }
+
+    // Check for obvious non-job emails
+    if (EXCLUDE_KEYWORDS.some(word => lowerSubject.includes(word))) {
+        return false;
+    }
+
+    // Check for job-related keywords
+    return JOB_KEYWORDS.some(word => 
+        lowerSubject.includes(word) || lowerFrom.includes(word)
+    );
+}
+
+const providers = [
+    {
+        name: 'LinkedIn',
+        test: (from: string) => from.includes('linkedin.com'),
+        parse: (email: { subject: string, content: string }) => {
+            // Split content into lines and filter out noise
+            const lines = email.content.split('\n')
+                .map(line => line.trim())
+                .filter(line => line && !line.includes('View job:') && !line.includes('http'));
+            
+            // Usually first two non-empty lines are position and company
+            if (lines.length >= 2) {
+                return {
+                    position: lines[0],
+                    company: lines[1]
+                };
+            }
+            return null;
+        }
+    },
     {
         name: 'Greenhouse',
-        domains: ['greenhouse-mail.io'],
-        isATS: (from: string) => from.includes('greenhouse-mail.io'),
-        parseCompany: (email) => {
-            const match = email.content.match(/application (?:to|for) ([^.!,\n]+)/i);
-            return match ? match[1].trim() : null;
-        },
-        parsePosition: (email) => {
-            const match = email.content.match(/applying for the ([^.!,\n]+?) position/i);
-            return match ? match[1].trim() : null;
+        test: (from: string) => from.includes('greenhouse-mail.io'),
+        parse: (email: { subject: string, content: string }) => {
+            const match = email.content.match(/applying (?:to|for) ([^.!,\n]+)/i);
+            return match ? { company: match[1].trim(), position: 'Software Engineer' } : null;
         }
     },
     {
         name: 'Workday',
-        domains: ['myworkday.com'],
-        isATS: (from: string) => from.includes('@myworkday.com'),
-        parseCompany: (email) => {
+        test: (from: string) => from.includes('myworkday.com'),
+        parse: (email: { subject: string, content: string }) => {
             const match = email.subject.match(/Application (?:at|with) ([^.!,\n]+)/i);
-            return match ? match[1].trim() : null;
-        }
-    },
-    {
-        name: 'iCIMS',
-        domains: ['talent.icims.com'],
-        isATS: (from: string) => from.includes('talent.icims.com'),
-        parseCompany: (email) => {
-            const match = email.content.match(/Thank you for applying to ([^.!,\n]+)/i);
-            return match ? match[1].trim() : null;
-        }
-    },
-    {
-        name: 'Amazon Jobs',
-        domains: ['amazon.jobs'],
-        isATS: (from: string) => from.includes('amazon.jobs'),
-        parseCompany: () => 'Amazon',
-        parsePosition: (email) => {
-            // Special handling for Amazon's format
-            const match = email.content.match(/application for the (.*?)\s*\(ID: \d+\)/i);
-            return match ? match[1].trim() : null;
+            return match ? { company: match[1].trim(), position: 'Software Engineer' } : null;
         }
     }
 ];
 
-interface EmailPattern {
-    pattern: RegExp;
-    source: 'subject' | 'content';
-}
-
-const companyPatterns: EmailPattern[] = [
-    {
-        pattern: /Thank you for [Aa]pplying to ([^.!,\n]+)/i,
-        source: 'subject'
-    },
-    {
-        pattern: /application (?:to|for|with) ([^.!,\n]+)/i,
-        source: 'content'
-    },
-    {
-        pattern: /applying (?:to|at|with) ([^.!,\n]+)/i,
-        source: 'content'
-    }
-];
-
-const additionalCompanyPatterns = [
-    // Remove "the" prefix and position suffixes
-    (text: string) => {
-        const match = text.match(/^(?:the\s+)?([^-\n]+?)(?:\s*-\s*.*)?$/i);
-        return match ? match[1].trim() : null;
-    },
-    // Handle "at Company" format
-    (text: string) => {
-        const match = text.match(/(?:at|with)\s+([^,\n]+)/i);
-        return match ? match[1].trim() : null;
-    }
-];
-
-
-const positionPatterns: EmailPattern[] = [
-    {
-        pattern: /application for the (.*?)(?:\(ID: \d+\)|position|role|\.|$)/i,
-        source: 'content'
-    },
-    {
-        pattern: /applying for(?: the)? ([^.!,\n]+?) position/i,
-        source: 'content'
-    },
-    {
-        pattern: /role:?\s*([^.!,\n]+)/i,
-        source: 'content'
-    }
-];
-
-const additionalPositionPatterns = [
-    // Extract position from role titles
-    (text: string) => {
-        const match = text.match(/(?:for the|position:|role:)\s*([^,\n]+)(?=\s*(?:at|with|$))/i);
-        return match ? match[1].trim() : null;
-    },
-    // Handle intern positions
-    (text: string) => {
-        const match = text.match(/([^,\n]+?(?:Intern|Internship)[^,\n]*)/i);
-        return match ? match[1].trim() : null;
-    }
-];
-
-
-export function isJobApplication(from: string, subject: string): boolean {
-    if (atsProviders.some((provider) => provider.isATS(from))) {
-        return true;
-    }
-
-    const strongIndicators = [
-        'thank you for applying',
-        'application received',
-        'application confirmation',
-        'thank you for your interest',
-        'position of',
-        'role of'
-    ];
-
-    const jobKeywords = [
-        'engineer', 'developer', 'software', 'position', 'application',
-        'job', 'career', 'role', 'applied'
-    ];
-
-    // Exclude common non-job email subjects
-    const excludeKeywords = [
-        'newsletter', 'news alert', 'promotion', 'offer', 'sale',
-        'discount', 'deal', 'shopping', 'payment', 'bill'
-    ];
-
-    const subjectLower = subject.toLowerCase();
-    const fromLower = from.toLowerCase();
-
-    // Exclude if contains exclude keywords
-    if (excludeKeywords.some(keyword => subjectLower.includes(keyword))) {
-        return false;
-    }
-
-    // Include if contains strong indicators
-    if (strongIndicators.some(indicator => 
-        subjectLower.includes(indicator) || fromLower.includes(indicator))) {
-        return true;
-    }
-
-    // Must have at least one job keyword
-    return jobKeywords.some(keyword => subjectLower.includes(keyword));
-}
-
-function tryPatterns(
-    email: { subject: string, content: string }, 
-    patterns: EmailPattern[],
-    additionalPatterns?: ((text: string) => string | null)[]
-): string | null {
-    for (const { pattern, source } of patterns) {
-        const text = email[source];
-        if (!text) continue;
-        
-        const match = text.match(pattern);
-        if (match && match[1]) {
-            return cleanupCompany(match[1]);
-        }
-    }
-
-    if (additionalPatterns) {
-        for (const pattern of additionalPatterns) {
-            // Try subject
-            const subjectMatch = pattern(email.subject);
-            if (subjectMatch) {
-                return cleanupCompany(subjectMatch);
-            }
-            
-            // Try content
-            const contentMatch = pattern(email.content);
-            if (contentMatch) {
-                return cleanupCompany(contentMatch);
-            }
-        }
-    }
-
-
-    return null;
-}
-
-export const parseJobEmail = (email: {
-    subject: string,
-    content: string,
-    from: string,
-    receivedDate: Date,
-    emailId: string
-}): ParsedJobInfo => {
-    let { company, position } = classifyEmail({
-        subject: email.subject,
-        content: email.content,
-        from: email.from
-    });
-
-    // First try ATS-specific parsing
-    const atsProvider = atsProviders.find(provider => provider.isATS(email.from));
-    if (atsProvider) {
-        if (atsProvider.parseCompany) {
-            const atsCompany = atsProvider.parseCompany(email);
-            if (atsCompany) company = atsCompany;
-        }
-        if (atsProvider.parsePosition) {
-            const atsPosition = atsProvider.parsePosition(email);
-            if (atsPosition) position = atsPosition;
-        }
-    }
-
-    // If still needed, try general patterns
-    if (!company || company === 'Unknown Company') {
-        const extractedCompany = tryPatterns(email, companyPatterns, additionalCompanyPatterns);
-        if (extractedCompany) company = extractedCompany;
-    }
-
-    if (!position || position === 'Software Engineer') {
-        const extractedPosition = tryPatterns(email, positionPatterns, additionalPositionPatterns);
-        if (extractedPosition) {
-            position = extractedPosition
-                .replace(/\(ID: \d+\)/g, '')
-                .replace(/\([^)]+\)/g, '')
-                .trim();
-        }
-    }
-
-    if (company) {
-        company = company
-            .replace(/\s*-\s*Software Engineer.*$/i, '')
-            .replace(/\s*-\s*Developer.*$/i, '')
-            .replace(/\s+position$/i, '')
-            .replace(/\s+role$/i, '')
-            .trim();
-
-    }
-
-    // HTML entity decoding for cleaner text
-    company = company ? decodeHtmlEntities(company) : 'Unknown Company';
-    position = position ? decodeHtmlEntities(position) : 'Software Engineer';
-
-    return {
-        company,
-        position,
-        dateApplied: email.receivedDate,
-        status: 'applied',
-        emailId: email.emailId,
-    };
-};
-
-function cleanupCompany(raw: string): string {
-    return raw
-        .replace(/!+$/, '')                // Remove trailing exclamation marks
-        .replace(/\([^)]*\)/g, '')         // Remove parentheticals
-        .replace(/\s+/g, ' ')              // Normalize whitespace
+// Simple cleanup functions
+function cleanupText(text: string): string {
+    return text
+        .replace(/\s+/g, ' ')           // Normalize whitespace
+        .replace(/[^\w\s-]/g, '')       // Remove special characters
         .trim();
 }
 
-function decodeHtmlEntities(text: string): string {
-    return text
-        .replace(/&amp;/g, '&')
-        .replace(/&lt;/g, '<')
-        .replace(/&gt;/g, '>')
-        .replace(/&quot;/g, '"')
-        .replace(/&#39;/g, "'")
-        .replace(/&nbsp;/g, ' ');
+export function parseJobEmail(email: { 
+    subject: string, 
+    content: string, 
+    from: string,
+    receivedDate: Date,
+    emailId: string 
+}): ParsedJobInfo {
+    // Try to find a matching provider
+    for (const provider of providers) {
+        if (provider.test(email.from)) {
+            const result = provider.parse(email);
+            if (result?.company && result?.position) {
+                return {
+                    company: cleanupText(result.company),
+                    position: cleanupText(result.position),
+                    dateApplied: email.receivedDate,
+                    status: 'applied',
+                    emailId: email.emailId
+                };
+            }
+        }
+    }
+
+    // Simple fallback: try to find common patterns in subject
+    const subjectMatch = email.subject.match(/(?:applying to|application for) ([^.!,\n]+)/i);
+    if (subjectMatch?.[1]) {
+        return {
+            company: cleanupText(subjectMatch[1]),
+            position: 'Software Engineer',
+            dateApplied: email.receivedDate,
+            status: 'applied',
+            emailId: email.emailId
+        };
+    }
+
+    // If all else fails, return unknown
+    return {
+        company: 'Unknown Company',
+        position: 'Software Engineer',
+        dateApplied: email.receivedDate,
+        status: 'applied',
+        emailId: email.emailId
+    };
+}
+
+// Simple duplicate detection
+export function isDuplicate(existing: ParsedJobInfo, newApp: ParsedJobInfo): boolean {
+    if (existing.emailId === newApp.emailId) return true;
+    
+    const sameCompany = cleanupText(existing.company) === cleanupText(newApp.company);
+    const samePosition = cleanupText(existing.position) === cleanupText(newApp.position);
+    if (sameCompany && samePosition) {
+        const hoursDiff = Math.abs(existing.dateApplied.getTime() - newApp.dateApplied.getTime()) / (1000 * 60 * 60);
+        return hoursDiff < 24;
+    }
+    return false;
 }

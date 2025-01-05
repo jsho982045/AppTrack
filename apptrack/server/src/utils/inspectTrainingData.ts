@@ -1,4 +1,4 @@
-// inspectTrainingData.ts
+// server/src/utils/inspectTrainingData.ts
 import dotenv from 'dotenv';
 import path from 'path';
 import { MongoClient } from 'mongodb';

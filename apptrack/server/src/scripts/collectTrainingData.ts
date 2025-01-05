@@ -1,3 +1,4 @@
+// server/src/scripts/collectTrainingData.ts
 import { getGmailClient } from "../auth/google"
 import { TrainingEmail } from "../models/TrainingEmail";
 import { gmail_v1 } from "googleapis";

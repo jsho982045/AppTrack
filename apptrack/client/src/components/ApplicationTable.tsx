@@ -1,7 +1,6 @@
-import { useState } from 'react';
-import { ChevronDown, ChevronUp, Mail } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { ChevronDown, ChevronUp, Mail, MoreVertical, Pencil, Trash } from 'lucide-react';
 import { JobApplication } from '../types';
-import ApplicationActions from './ApplicationActions';
 
 interface ApplicationTableProps {
     applications: JobApplication[];
@@ -12,6 +11,7 @@ interface ApplicationTableProps {
 const ApplicationTable = ({ applications, onDelete, onEdit }: ApplicationTableProps) => {
     const [sortField, setSortField] = useState<keyof JobApplication>('dateApplied');
     const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+    const [openActionId, setOpenActionId] = useState<string | null>(null);
 
     const handleSort = (field: keyof JobApplication) => {
         if (sortField === field) {
@@ -37,6 +37,23 @@ const ApplicationTable = ({ applications, onDelete, onEdit }: ApplicationTablePr
         if (sortField !== field) return null;
         return sortDirection === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />;
     };
+
+    const toggleActions = (id: string) => {
+        setOpenActionId(openActionId === id ? null : id); 
+    };
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (openActionId && !(event.target as Element).closest('action-menu')) {
+                setOpenActionId(null);
+            }
+        };
+
+        document.addEventListener('click', handleClickOutside);
+        return () =>{
+            document.removeEventListener('click', handleClickOutside);
+    };
+}, [openActionId]);
 
     return (
         <div className="overflow-x-auto">
@@ -113,18 +130,48 @@ const ApplicationTable = ({ applications, onDelete, onEdit }: ApplicationTablePr
                                     {app.status.charAt(0).toUpperCase() + app.status.slice(1)}
                                 </span>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                <ApplicationActions 
-                                    onDelete={() => onDelete(app._id!)}
-                                    onEdit={() => onEdit(app)}
-                                />
-                            </td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
-        </div>
-    );
-};
+                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium relative">
+                                <button 
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        toggleActions(app._id!);
+                                    }}
+                                    className='text-gray-400 hover:text-gray-600 action-menu'
+                                    >
+                                        <MoreVertical className='w-5 h-5' />
+                                    </button>
+
+                                    {openActionId === app._id && (
+                                        <div className='absolute right-0 mt-2 py-2 w-48 bg-white roounded-md shadow-xl z-50 action-menu'>
+                                            <button
+                                                onClick={() => {
+                                                    onEdit(app);
+                                                    setOpenActionId(null);
+                                                }}
+                                                className='flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full'
+                                                >
+                                                    <Pencil className='w-4 h-4 mr-2' />
+                                                    Edit Application
+                                                </button>
+                                                <button
+                                                    onClick={() => {
+                                                        onDelete(app._id!);
+                                                        setOpenActionId(null);
+                                                    }}
+                                                    className='flex items-center px-4 py-2 text-sm text-red-600 hover:bg-gray-100 w-full'
+                                                >
+                                                    <Trash className='w-4 h-4 mr-2' />
+                                                    Delete Application
+                                                </button>
+                                            </div>
+                                        )}
+                                 </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        );
+    };
 
 export default ApplicationTable;

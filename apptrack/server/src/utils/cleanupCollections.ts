@@ -14,11 +14,12 @@ async function cleanupCollections() {
         // Get all training emails and reprocess them
         const trainingCollection = db.collection('trainingemails');
         const emails = await trainingCollection.find({}).toArray();
+        const applicationEmails = emails.filter(email => email.isApplicationEmail === true);
         
         console.log(`Processing ${emails.length} emails...`);
         let successCount = 0;
         
-        for (const email of emails) {
+        for (const email of applicationEmails) {
             const parsedJob = parseJobEmail({
                 subject: email.subject,
                 content: email.content,
