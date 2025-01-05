@@ -12,6 +12,9 @@ export interface ITrainingEmail {
     emailId: string;
     receivedDate: Date;
     verified: boolean;
+    parsedCompany?: string;
+    parsedPosition?: string;
+    processingStatus?: 'pending' | 'success' | 'failed';
 }
 
 const trainingEmailSchema = new mongoose.Schema<ITrainingEmail>({
@@ -24,6 +27,9 @@ const trainingEmailSchema = new mongoose.Schema<ITrainingEmail>({
     emailId: { type: String, required: true, unique: true },
     receivedDate: { type: Date, required: true },
     verified: { type: Boolean, required: true },
+    parsedCompany: { type: String },
+    parsedPosition: { type: String },
+    processingStatus: { type: String, enum: ['pending', 'success', 'failed'] }
 });
 
 export const TrainingEmail = mongoose.model<ITrainingEmail>('TrainingEmail', trainingEmailSchema);
