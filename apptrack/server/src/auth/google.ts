@@ -4,6 +4,7 @@ import { google } from 'googleapis';
 import { OAuth2Client } from 'google-auth-library';
 import { Token } from '../models/Token';
 import path from 'path';
+import { error } from 'console';
 
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
@@ -53,14 +54,16 @@ export const refreshAccessToken = async (refreshToken: string) => {
 export const getGmailClient = async () => {
     const tokenDoc = await Token.findOne();
     if(!tokenDoc) {
-        throw new Error('No authentication token found');
+        throw Object.assign(new Error('No authentication token found'), {
+            code: 'AUTH_REQUIRED'
+        });
     }
 
     try {
         const newTokens = await refreshAccessToken(tokenDoc.refresh_token);
 
         await Token.findByIdAndUpdate(
-            { _id: tokenDoc._id },
+            tokenDoc._id,
             {
                 access_token: newTokens.access_token,
                 expiry_date: newTokens.expiry_date
@@ -72,7 +75,10 @@ export const getGmailClient = async () => {
         return google.gmail({ version: 'v1', auth: oauth2Client });
     }catch (error) {
         console.error('Error getting Gmail client', error);
-        throw error;
+        await Token.deleteMany({});
+        throw Object.assign(new Error('Authentication required'), {
+            code: 'AUTH_REQUIRED'
+        });
     }
 };
 

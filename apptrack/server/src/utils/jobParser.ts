@@ -1,4 +1,4 @@
-// jobParser.ts
+// apptrack/server/src/utils/jobParser.ts
 import { classifyEmail } from "./trainParser";
 
 export interface ParsedJobInfo {

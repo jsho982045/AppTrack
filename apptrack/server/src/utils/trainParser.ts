@@ -1,68 +1,74 @@
-// trainParser.ts
-import { BayesClassifier } from 'natural';
+// apptrack/server/src/utils/trainParser.ts
+import { EmailProcessor } from "../ml/emailProcessor";
+import { ITrainingEmail } from '../models/TrainingEmail';
+import path from 'path';
 
-// We'll keep this simple and only focus on company extraction
-let classifier: BayesClassifier | null = null;
+let processor: EmailProcessor | null = null;
+const MODEL_PATH = path.join(__dirname, '../../models/classifiers/email_classifier');
 
-function cleanText(text: string): string {
-    return text
-        .replace(/[^\w\s@.-]/g, ' ')
-        .toLowerCase()
-        .replace(/\s+/g, ' ')
-        .trim();
-}
-
-// Simple training data validation
-function isValidTrainingEmail(doc: any): boolean {
-    return doc.subject && 
-           doc.content && 
-           doc.from && 
-           doc.company && 
-           doc.company !== 'Unknown Company';
-}
-
-export async function trainClassifier(trainingEmails: any[]): Promise<void> {
-    console.log(`Processing ${trainingEmails.length} training emails`);
-    
-    // Filter valid training data
-    const validEmails = trainingEmails.filter(isValidTrainingEmail);
-    console.log(`Found ${validEmails.length} valid training emails`);
-    
-    if (validEmails.length < 5) {
-        console.log('Insufficient training data');
-        return;
-    }
-
-    // Create and train classifier
-    const newClassifier = new BayesClassifier();
-    
-    validEmails.forEach(email => {
-        const text = cleanText(`${email.subject} ${email.content}`);
-        newClassifier.addDocument(text, email.company);
-    });
-
-    newClassifier.train();
-    console.log('Classifier trained successfully');
-}
-
-// Simple classification function
-export function classifyEmail(email: { subject: string, content: string, from: string }) {
-    const text = cleanText(`${email.subject} ${email.content}`);
-    
-    if (classifier) {
+export async function initializeProcessor(): Promise<void> {
+    if (!processor) {
+        processor = new EmailProcessor();
         try {
-            const company = classifier.classify(text);
-            return {
-                company,
-                position: 'Software Engineer' // Default position
-            };
+            await processor.loadModel(MODEL_PATH);
+            console.log('Model loaded successfully');
         } catch (error) {
-            console.error('Classification error:', error);
+            console.log('No existing model found, will train new one');
         }
     }
-
-    return {
-        company: 'Unknown Company',
-        position: 'Software Engineer'
-    };
 }
+
+export async function trainClassifier(trainingEmails: ITrainingEmail[]): Promise<void> {
+    console.log(`Processing ${trainingEmails.length} training emails`);
+    
+    if (!processor) {
+        processor = new EmailProcessor();
+    }
+    
+    try {
+        console.log('Building vocabulary...');
+        await processor.buildVocabulary(trainingEmails);
+        
+        console.log('Training model...');
+        await processor.trainModel(trainingEmails);
+        
+        // Save the trained model
+        await processor.saveModel(MODEL_PATH);
+        console.log('Model saved successfully');
+    } catch (error) {
+        console.error('Training error:', error);
+        throw error;
+    }
+}
+
+export async function classifyEmail(email: { subject: string, content: string, from: string }) {
+    if (!processor) {
+        await initializeProcessor();
+    }
+    
+    if (!processor) {
+        throw new Error('Failed to initialize processor');
+    }
+
+    try {
+        const result = await processor.predictEmail({
+            subject: email.subject,
+            content: email.content
+        });
+
+        return {
+            ...result,
+            company: 'Unknown Company', // We'll enhance this later
+            position: 'Software Engineer' // We'll enhance this later
+        };
+    } catch (error) {
+        console.error('Classification error:', error);
+        return {
+            isJobApplication: false,
+            confidence: 0,
+            company: 'Unknown Company',
+            position: 'Software Engineer'
+        };
+    }
+}
+

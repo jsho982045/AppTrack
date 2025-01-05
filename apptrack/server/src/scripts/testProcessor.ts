@@ -1,7 +1,8 @@
+// src/scripts/testProcessor.ts
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import { TrainingEmail } from '../models/TrainingEmail';
-import { extractFeatures } from '../ml/emailProcessor';
+import { trainClassifier, classifyEmail } from '../utils/trainParser';
 
 dotenv.config();
 
@@ -10,21 +11,32 @@ const testProcessor = async () => {
         await mongoose.connect(process.env.MONGODB_URI!);
         console.log('Connected to MongoDB');
 
-        const applicationEmail = await TrainingEmail.findOne({ isApplicationEmail: true });
-        const regularEmail = await TrainingEmail.findOne({ isApplicationEmail: false});
+        // Get all training emails
+        const trainingEmails = await TrainingEmail.find({}).lean();
+        console.log(`Found ${trainingEmails.length} training emails`);
 
-        if(applicationEmail) {
-            console.log('\nProcessing Application Email:');
-            console.log('Original Subject:', applicationEmail.subject);
-            const appFeatures = await extractFeatures(applicationEmail);
-            console.log('Processed Features:', appFeatures);
-        }
+        // Train the classifier
+        console.log('Training classifier...');
+        await trainClassifier(trainingEmails);
 
-        if(regularEmail) {
-            console.log('\nProcessing Regular Email:');
-            console.log('Original Subject:', regularEmail.subject);
-            const regFeatures = await extractFeatures(regularEmail);
-            console.log('Processed Features:', regFeatures);
+        // Test some emails
+        const testEmails = trainingEmails.slice(0, 5);
+        console.log('\nTesting classification:');
+        
+        for (const email of testEmails) {
+            console.log('\nTesting email:', email.subject);
+            const result = await classifyEmail({
+                subject: email.subject,
+                content: email.content,
+                from: email.from
+            });
+            
+            console.log('Classification result:', {
+                expected: email.isApplicationEmail,
+                predicted: result.isJobApplication,
+                confidence: result.confidence,
+                correct: email.isApplicationEmail === result.isJobApplication
+            });
         }
     } catch (error) {
         console.error('Error:', error);
@@ -33,4 +45,6 @@ const testProcessor = async () => {
     }
 };
 
-testProcessor();
+if (require.main === module) {
+    testProcessor().catch(console.error);
+}

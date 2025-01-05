@@ -7,7 +7,8 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "collect-data": "ts-node src/scripts/runDataCollection.ts",
-    "test-processor": "ts-node src/scripts/testProcessor.ts"
+    "test-processor": "ts-node src/scripts/testProcessor.ts",
+    "test-extractor": "ts-node src/scripts/testExtractor.ts"
   },
   "keywords": [],
   "author": "",

@@ -1,3 +1,4 @@
+// server/src/models/JobApplication.ts
 import mongoose from 'mongoose';
 
 interface JobApplication {

@@ -20,6 +20,14 @@ app.use((req, res, next) => {
     next();
 });
 
+const handleAuthError = (error: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    if (error.code === 'AUTH_REQUIRED') {
+        const authUrl = getGoogleAuthURL();
+        return res.redirect(authUrl);
+    }
+    next(error);
+};
+
 mongoose.connect(process.env.MONGODB_URI!)
     .then(() => {
         console.log('Connected to MongoDB Atlas successfully');
@@ -41,37 +49,47 @@ app.get('/auth/google', (req, res) => {
     res.redirect(authUrl);
 });
 
+app.get('/api/check-emails', async (req, res) => {
+    try {
+        await checkForNewApplications();
+        res.json({ message: 'Email check completed' });
+    } catch (error: any) {
+        if (error.code === 'AUTH_REQUIRED') {
+            const authUrl = getGoogleAuthURL();
+            return res.redirect(authUrl);
+        }
+        res.status(500).json({ error: 'Failed to check emails' });
+    }
+});
+
+app.get('/auth/google', (req, res) => {
+    const authUrl = getGoogleAuthURL();
+    res.redirect(authUrl);
+});
+
 app.get('/auth/google/callback', async (req, res) => {
     try {
         const code = req.query.code as string;
         console.log('Received auth code:', code);
-
         const tokens = await getGoogleTokens(code);
         console.log('Received tokens:', tokens);
 
         if(!tokens.refresh_token || !tokens.access_token || !tokens.expiry_date){
             throw new Error('Missing required token fields');
         }
-        let tokenDoc = await Token.findOne();
-        if (!tokenDoc) {
-            tokenDoc = new Token({
-                refresh_token: tokens.refresh_token,
-                access_token: tokens.access_token,
-                expiry_date: tokens.expiry_date
-            });
-        }else {
-            tokenDoc.refresh_token = tokens.refresh_token;
-            tokenDoc.access_token = tokens.access_token;
-            tokenDoc.expiry_date = tokens.expiry_date;
-        }
 
+        // Clear existing tokens and save new ones
+        await Token.deleteMany({});
+        const tokenDoc = new Token({
+            refresh_token: tokens.refresh_token,
+            access_token: tokens.access_token,
+            expiry_date: tokens.expiry_date
+        });
         await tokenDoc.save();
-
         
-
         console.log('Saved token document:', {
             refresh_token: 'Present',
-            access_token:  'Present',
+            access_token: 'Present',
             expiry_date: tokenDoc.expiry_date
         });
 
@@ -90,13 +108,30 @@ app.get('/auth/google/callback', async (req, res) => {
     }
 });
 
+// Error handling middleware must be after all routes
+app.use(handleAuthError);
+
+// Email check interval
 setInterval(async () => {
     console.log('Checking for new job applications...');
-    await checkForNewApplications();
+    await checkForNewApplications().catch(error => {
+        if (error.code === 'AUTH_REQUIRED') {
+            console.log('Auth required, waiting for next check...');
+        } else {
+            console.error('Error checking applications:', error);
+        }
+    });
 }, 30 * 60 * 1000);
 
-checkForNewApplications().catch(console.error);
+// Initial check (with better error handling)
+checkForNewApplications().catch(error => {
+    if (error.code === 'AUTH_REQUIRED') {
+        console.log('Initial check requires authentication...');
+    } else {
+        console.error('Error in initial check:', error);
+    }
+});
 
 app.listen(port, () => {
     console.log(`Server running on port ${port}`);
-})
+});

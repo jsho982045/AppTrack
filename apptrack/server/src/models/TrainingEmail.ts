@@ -1,3 +1,5 @@
+// apptrack/server/src/models/TrainingEmail.ts
+
 import mongoose from "mongoose";
 
 export interface ITrainingEmail {
