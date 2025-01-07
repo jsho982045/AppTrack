@@ -1,5 +1,10 @@
+// server/src/controllers/JobApplication.ts
 import { Request, Response } from 'express';
 import { JobApplication } from '../models/JobApplication'; 
+import { ParserService } from '../services/parser';
+import { join } from 'path';
+
+const parserService = new ParserService();
 
 export const getAllApplications = async (req: Request, res: Response) => {
     try {
@@ -54,5 +59,25 @@ export const updateApplication = async (req: Request, res: Response): Promise<vo
     } catch (error) {
         res.status(500).json({ message: 'Error updating application', error });
         
+    }
+};
+
+
+export const processJobEmail = async (req: Request, res: Response) => {
+    try {
+        const { subject, content, from } = req.body;
+
+        const parsedJob = await parserService.parseJobEmail({
+            subject,
+            content,
+            from_email: from
+        });
+
+        const newApplication = new JobApplication(parsedJob);
+        const savedApplication = await newApplication.save();
+
+        res.status(201).json(savedApplication);
+    } catch (error) {
+        res.status(400).json({ message: 'Error processing job email', error });
     }
 };
