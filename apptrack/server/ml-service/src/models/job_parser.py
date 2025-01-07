@@ -55,31 +55,49 @@ class JobParser:
         "msft": "Microsoft"
     }
 
+        company_indicators = [
+            "applying to",
+            "application for",
+            "role at",
+            "position at",
+            "joining",
+            "welcome to"
+        ]
+
+
         if from_email:
             domain = from_email.split('@')[-1].split('.')[0].lower()
             if domain in company_aliases:
                 return company_aliases[domain]
+            
+            if domain not in ['gmail', 'yahoo', 'hotmail', 'outlook']:
+                return domain.title()
         
         # Combine text for analysis
         combined_text = f"{subject}\n{content}"
         doc = self.nlp(combined_text)
+
+        for indicator in company_indicators:
+            if indicator in combined_text.lower():
+                idx = combined_text.lower().find(indicator) + len(indicator)
+                next_words = combined_text[idx:idx+50].strip().split('!')[0].split('.')[0].strip()
+                if next_words:
+                    company_name = next_words.strip('! .')
+                    if company_name.lower() in company_aliases:
+                        return company_aliases[company_name.lower()]
+                    return company_name
         
         # Extract organizations using NER
         organizations = [ent.text for ent in doc.ents if ent.label_ == "ORG"]
 
-        for org in organizations:
-            org_lower = org.lower()
-            if org_lower in company_aliases:
-                return company_aliases[org_lower]
-        
         if organizations:
+            for org in organizations:
+                org_lower = org.lower()
+                if org_lower in company_aliases:
+                    return company_aliases[org_lower]
+        
             return organizations[0]
-            
-        text_lower = combined_text.lower()
-        for alias, company in company_aliases.items():
-            if alias in text_lower:
-                return company 
-            
+        
         return None
         
     def _extract_position(self, subject: str, content: str) -> Optional[str]:
@@ -134,6 +152,18 @@ class JobParser:
 
         suffix_levels = ["I", "II", "III", "IV", "V"]
 
+        position_modifiers = [
+            "New Grad",
+            "New Graduate",
+            "Intern",
+            "Summer",
+            "Fall",
+            "Spring",
+            "Winter",
+            "2024",
+            "2025"
+        ]
+
         text_to_search = f"{subject}\n{content}".lower()
         original_text = f"{subject}\n{content}"
         words = text_to_search.split()
@@ -155,13 +185,16 @@ class JobParser:
                     after_content = ' '.join(after_text)
                     print(f"After content: {after_content}")
 
+                    for modifier in position_modifiers:
+                        if modifier.lower() in text_to_search:
+                            position_components.append(modifier)
+
                     for level in suffix_levels:
                         if f" {level} " in f" {after_content} ":
                             position_components.append(level)
-                            print(f"Found level: {level}")  # Debug
-                            break
+                            print(f"Found level: {level}")
                 
-                    print(f"Final components: {position_components}")  # Debug
+                    print(f"Final components: {position_components}")
                     return " ".join(position_components)
                     
       
@@ -191,15 +224,22 @@ class JobParser:
     def _calculate_confidence(self, company: Optional[str], position: Optional[str]) -> float:
         """Calculate confidence score for the parsing results"""
         score = 0.0
-
-        known_companies = {"Amazon", "Google", "Meta", "Microsoft", "Apple"}
-        
-        if company in known_companies:
-            score += 0.6
-        else:
-            score += 0.4
-        
-        if position and position != "Position Not Found":
-            score += 0.4
+    
+        # More granular scoring
+        if company:
+            if company in {"Amazon", "Google", "Meta", "Microsoft", "Apple"}:
+                score += 0.6  # Known major companies
+            elif company != "Unknown Company":
+                score += 0.4  # Found a company name
+            else:
+                score += 0.1  # Unknown company
+            
+        if position:
+            if position != "Position Not Found":
+                base_score = 0.4
+                # Add bonus for more complete positions
+                if any(level in position for level in ["I", "II", "III", "Senior", "Lead", "New Grad"]):
+                    base_score += 0.1
+                score += base_score
             
         return min(score, 1.0)
