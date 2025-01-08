@@ -1,11 +1,21 @@
 # server/ml-service/src/api/routes.py
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Dict
 from src.models.job_parser import JobParser
 
 app = FastAPI()
 parser = JobParser()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 class EmailData(BaseModel):
     subject: str

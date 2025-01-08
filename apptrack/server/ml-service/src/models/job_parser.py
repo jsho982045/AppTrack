@@ -1,6 +1,7 @@
 # server/ml-service/src/models/job_parser.py
 from typing import Dict, Optional
 import spacy
+import re
 from datetime import datetime
 
 class JobParser:
@@ -43,6 +44,8 @@ class JobParser:
             
     def _extract_company(self, subject: str, content: str, from_email: str) -> Optional[str]:
         """Extract company name using NER and pattern matching"""
+
+
         company_aliases = {
         "aws": "Amazon",
         "amazon aws": "Amazon",
@@ -55,6 +58,17 @@ class JobParser:
         "msft": "Microsoft"
     }
 
+        email_services = [
+            'greenhouse-mail.io', 'ashbyhq.com',
+            'lever.co', 'workday.com', 'smartrecruiters.com'
+        ]
+
+        subject_patterns = [
+            r"Thank you for applying to (.+?)(?:\||$|\n|!)",
+            r"Your application (?:to|with) (.+?)(?:\||$|\n|!)",
+            r"Application (?:to|with) (.+?)(?:\||$|\n|!)"
+        ]
+
         company_indicators = [
             "applying to",
             "application for",
@@ -65,18 +79,17 @@ class JobParser:
         ]
 
 
-        if from_email:
-            domain = from_email.split('@')[-1].split('.')[0].lower()
-            if domain in company_aliases:
-                return company_aliases[domain]
-            
-            if domain not in ['gmail', 'yahoo', 'hotmail', 'outlook']:
-                return domain.title()
-        
-        # Combine text for analysis
-        combined_text = f"{subject}\n{content}"
-        doc = self.nlp(combined_text)
+        for pattern in subject_patterns:
+            match = re.search(pattern, subject, re.IGNORECASE)
+            if match:
+                company = match.group(1).strip()
+                company = re.sub(r'(?i)(\s*-.*|\s*\|.*|\s*LLC.*|\s*Inc.*|\s*Corp.*)', '', company)
+                if company.lower() in company_aliases:
+                    return company_aliases[company.lower()]
+                return company
 
+        # Then check company indicators
+        combined_text = f"{subject}\n{content}"
         for indicator in company_indicators:
             if indicator in combined_text.lower():
                 idx = combined_text.lower().find(indicator) + len(indicator)
@@ -86,18 +99,25 @@ class JobParser:
                     if company_name.lower() in company_aliases:
                         return company_aliases[company_name.lower()]
                     return company_name
-        
-        # Extract organizations using NER
-        organizations = [ent.text for ent in doc.ents if ent.label_ == "ORG"]
 
+        # Only check email domain if it's not a service provider
+        if from_email:
+            domain = from_email.split('@')[-1].split('.')[0].lower()
+            if domain not in ['gmail', 'yahoo', 'hotmail', 'outlook'] + email_services:
+                if domain in company_aliases:
+                    return company_aliases[domain]
+                return domain.title()
+
+        # Use NER as last resort
+        doc = self.nlp(combined_text)
+        organizations = [ent.text for ent in doc.ents if ent.label_ == "ORG"]
         if organizations:
             for org in organizations:
                 org_lower = org.lower()
                 if org_lower in company_aliases:
                     return company_aliases[org_lower]
-        
             return organizations[0]
-        
+
         return None
         
     def _extract_position(self, subject: str, content: str) -> Optional[str]:

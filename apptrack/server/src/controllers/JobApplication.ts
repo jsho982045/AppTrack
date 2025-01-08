@@ -2,7 +2,10 @@
 import { Request, Response } from 'express';
 import { JobApplication } from '../models/JobApplication'; 
 import { ParserService } from '../services/parser';
+import { checkForNewApplications } from '../services/gmail';
+import { reparseAllEmails } from '../services/gmail';
 import { join } from 'path';
+import { TrainingEmail } from '../models/TrainingEmail';
 
 const parserService = new ParserService();
 
@@ -62,7 +65,6 @@ export const updateApplication = async (req: Request, res: Response): Promise<vo
     }
 };
 
-
 export const processJobEmail = async (req: Request, res: Response) => {
     try {
         const { subject, content, from } = req.body;
@@ -81,3 +83,33 @@ export const processJobEmail = async (req: Request, res: Response) => {
         res.status(400).json({ message: 'Error processing job email', error });
     }
 };
+
+export const clearApplications = async (req: Request, res: Response): Promise<void> => {
+    try {
+        await JobApplication.deleteMany({});
+        res.json({ message: 'All applications cleared' });
+    } catch (error) {
+        res.status(500).json({ message: 'Error clearing applications', error });
+    }
+};
+
+export const reparseApplications = async (req: Request, res: Response): Promise<void> => {
+    try {
+        await reparseAllEmails();
+        res.json({ message: 'All emails reparsed successfully' });
+    } catch (error) {
+        res.status(500).json({ message: 'Error reparsing applications', error });
+    }
+};
+
+export const clearAllCollections = async (req: Request, res: Response): Promise<void> => {
+    try {
+        await JobApplication.deleteMany({});
+        await TrainingEmail.deleteMany({});
+        res.json({ message: 'All collections cleared' });
+    } catch (error) {
+        res.status(500).json({ message: 'Error clearing collections', error });
+    }
+};
+
+
