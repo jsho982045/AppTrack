@@ -5,6 +5,7 @@ import { createApplication, fetchApplications, deleteApplication, updateApplicat
 import AddApplicationModal from './AddApplicationModal';
 import EditApplicationModal from './EditApplicationModal';
 import ApplicationTable from './ApplicationTable';
+import ApplicationSearch from './ApplicationSearch';
 
 const Dashboard = () => {
     const [applications, setApplications] = useState<JobApplication[]>([]);
@@ -13,13 +14,19 @@ const Dashboard = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const[isEditModalOpen, setIsEditModalOpen] = useState(false);
     const[currentApplication, setCurrentApplication] = useState<JobApplication | null>(null);
+    const [filteredApplications, setFilteredApplications] = useState<JobApplication[]>([]);
+
 
     const handleAddApplication = async (newApplication: Omit<JobApplication, '_id'>) => {
-        try{
+        try {
             const createdApplication = await createApplication(newApplication);
-            setApplications(prev => [...prev, createdApplication]);
+            setApplications((prev) => 
+                [createdApplication, ...prev].sort((a, b) =>
+                    new Date(b.dateApplied).getTime() - new Date(a.dateApplied).getTime()
+                )
+            ); 
             setIsModalOpen(false);
-        }catch(err){
+        } catch (err) {
             setError('Failed to add application');
             console.error('Error adding application:', err);
         }
@@ -51,9 +58,11 @@ const Dashboard = () => {
             setError('Failed to update Application');
             console.error('Error updating applications:', err);
         }
-    };
+    }; 
 
-   
+    useEffect(() => {
+        setFilteredApplications(applications);
+    }, [applications]);
 
     useEffect(() => {
         const loadApplications = async () => {
@@ -91,20 +100,20 @@ const Dashboard = () => {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                     <div className="bg-white p-6 rounded-lg shadow">
                         <h3 className="text-lg font-medium text-gray-900">Total Applications</h3>
-                        <p className="text-2xl font-bold text-blue-600">{applications.length}</p>
+                        <p className="text-2xl font-bold text-blue-600">{filteredApplications.length}</p>
                     </div>
 
                     <div className="bg-white p-6 rounded-lg shadow">
                         <h3 className="text-lg font-medium text-gray-900">In Progress</h3>
                         <p className="text-2xl font-bold text-yellow-600">
-                            {applications.filter(app => app.status === 'interviewing').length}
+                            {filteredApplications.filter(app => app.status === 'interviewing').length}
                         </p>
                     </div>
 
                     <div className="bg-white p-6 rounded-lg shadow">
                         <h3 className="text-lg font-medium text-gray-900">Responses</h3>
                         <p className="text-2xl font-bold text-green-600">
-                            {applications.filter(app => app.status !== 'applied').length}
+                            {filteredApplications.filter(app => app.status !== 'applied').length}
                         </p>
                     </div>
                 </div>
@@ -126,12 +135,17 @@ const Dashboard = () => {
                     )}
 
                     {!loading && !error && applications.length > 0 && (
-                        <ApplicationTable 
-                            applications={applications} 
-                            onDelete={handleDeleteApplication}
-                            onEdit={handleEditApplication}
-                        />
-                        
+                        <>
+                            <ApplicationSearch
+                                applications={applications}
+                                onFilter={setFilteredApplications}
+                            />
+                            <ApplicationTable 
+                                applications={filteredApplications} 
+                                onDelete={handleDeleteApplication}
+                                onEdit={handleEditApplication}
+                            />
+                        </>
                     )}
                 </div>
 

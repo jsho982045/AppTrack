@@ -36,9 +36,7 @@ mongoose.connect(process.env.MONGODB_URI!)
         
         console.log('Connected to MongoDB Atlas successfully');
         if (mongoose.connection.db) {  // Add this check
-            console.log('Current database:', mongoose.connection.db.databaseName);
             const collections = await mongoose.connection.db.collections();
-            console.log('Available collections:', collections);
         }
     }).catch((error => {
         console.error('MongoDB connection error: ', error);

@@ -23,15 +23,11 @@ const ApplicationTable = ({ applications, onDelete, onEdit }: ApplicationTablePr
     };
 
     const sortedApplications = [...applications].sort((a, b) => {
-        if (sortField === 'dateApplied') {
-            const dateA = new Date(a[sortField]).getTime();
-            const dateB = new Date(b[sortField]).getTime();
-            return sortDirection === 'asc' ? dateA - dateB : dateB - dateA;
-        }
-        return sortDirection === 'asc'
-            ? String(a[sortField]).localeCompare(String(b[sortField]))
-            : String(b[sortField]).localeCompare(String(a[sortField]));
+        const dateA = new Date(a.dateApplied).getTime();
+        const dateB = new Date(b.dateApplied).getTime();
+        return sortDirection === 'asc' ? dateA - dateB : dateB - dateA;
     });
+    
 
     const SortIcon = ({ field }: { field: keyof JobApplication }) => {
         if (sortField !== field) return null;

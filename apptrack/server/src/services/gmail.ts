@@ -1,4 +1,4 @@
-// src/services/gmail.ts
+// server/src/services/gmail.ts
 import { google, gmail_v1 } from 'googleapis';
 import { Token } from '../models/Token';
 import { JobApplication } from '../models/JobApplication';
@@ -12,7 +12,6 @@ const ML_SERVICE_URL = 'http://127.0.0.1:8000';
 export const checkForNewApplications = async () => {
     try {
         const tokenDoc = await Token.findOne();
-        console.log('Found token document:', tokenDoc ? 'Present' : 'Not found');
         
         if (!tokenDoc) {
             throw Object.assign(new Error('No authentication token found'), {
@@ -21,20 +20,17 @@ export const checkForNewApplications = async () => {
         }
 
         const gmail = await getGmailClient();
-        console.log('Gmail client initialized');
         
         const response = await gmail.users.messages.list({
             userId: 'me',
             q: 'subject:("thank you for applying" OR "application received" OR "application confirmed" OR "application status" OR "we received your application") -subject:("job alert" OR "jobs for you" OR "new jobs" OR "opportunities" OR "job recommendations")',
             maxResults: 10
         });
-        console.log('Found emails:', response.data.messages?.length || 0);
 
         const messages = response.data.messages || [];
         
         for (const message of messages) {
             try {
-                console.log('Processing email:', message.id);
                 const email = await gmail.users.messages.get({
                     userId: 'me',
                     id: message.id!,
@@ -186,7 +182,6 @@ export const reparseAllEmails = async () => {
         throw error;
     }
 };
-
 
 function decodeEmailBody(payload: gmail_v1.Schema$MessagePart): string {
     let decoded = '';
