@@ -7,6 +7,8 @@ import { checkForNewApplications } from './services/gmail';
 import cors from 'cors';
 import { Token } from './models/Token';
 import { MongoClient} from 'mongodb';
+import { getApplicationEmails } from './controllers/Email';
+import { get } from 'http';
 
 
 dotenv.config();
@@ -43,6 +45,7 @@ mongoose.connect(process.env.MONGODB_URI!)
     }));
 
 app.get('/api/applications', getAllApplications);
+app.get('/api/applications/:id/emails', getApplicationEmails);
 app.post('/api/applications', createApplication);
 app.post('/api/collections/clear', clearAllCollections);
 app.post('/api/applications/reparse', reparseApplications);

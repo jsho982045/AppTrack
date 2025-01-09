@@ -7,11 +7,13 @@ interface JobApplication {
     position: string;
     dateApplied: Date;
     status: 'applied' | 'interviewing' | 'rejected' | 'accepted'
+    emailId?: string;
 }
 
 interface IJobApplicationDocument extends JobApplication {
     emailConfirmation?: string;
     lastUpdated: Date;
+    emailId?: string;
 }
 
 const jobApplicationSchema = new mongoose.Schema<IJobApplicationDocument>({
@@ -40,6 +42,10 @@ const jobApplicationSchema = new mongoose.Schema<IJobApplicationDocument>({
     lastUpdated: {
         type: Date,
         default: Date.now
+    },
+    emailId:{
+        type: String,
+        ref: 'Email'
     }
 });
 

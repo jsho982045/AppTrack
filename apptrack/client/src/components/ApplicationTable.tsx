@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { ChevronDown, ChevronUp, Mail, MoreVertical, Pencil, Trash } from 'lucide-react';
 import { JobApplication } from '../types';
+import EmailModal from './EmailModal';
 
 interface ApplicationTableProps {
     applications: JobApplication[];
@@ -12,6 +13,13 @@ const ApplicationTable = ({ applications, onDelete, onEdit }: ApplicationTablePr
     const [sortField, setSortField] = useState<keyof JobApplication>('dateApplied');
     const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
     const [openActionId, setOpenActionId] = useState<string | null>(null);
+    const [selectedApplication, setSelectedApplication] = useState<JobApplication | null>(null);
+
+    const handleRowClick = (application: JobApplication) => {
+        if (application.emailId) {
+            setSelectedApplication(application);
+        }
+    };
 
     const handleSort = (field: keyof JobApplication) => {
         if (sortField === field) {
@@ -99,7 +107,11 @@ const ApplicationTable = ({ applications, onDelete, onEdit }: ApplicationTablePr
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                     {sortedApplications.map(app => (
-                        <tr key={app._id} className="hover:bg-gray-50">
+                        <tr 
+                            key={app._id} 
+                            className={`hover:bg-gray-50 ${app.emailId ? 'cursor-pointer' : ''}`}
+                            onClick={() => handleRowClick(app)}
+                            >
                             <td className="px-6 py-4 whitespace-nowrap">
                                 <div className="text-sm font-medium text-gray-900 flex items-center space-x-2">
                                     <span>{app.company}</span>
@@ -166,6 +178,13 @@ const ApplicationTable = ({ applications, onDelete, onEdit }: ApplicationTablePr
                         ))}
                     </tbody>
                 </table>
+                {selectedApplication && (
+                    <EmailModal
+                        isOpen={!!selectedApplication}
+                        onClose={() => setSelectedApplication(null)}
+                        application={selectedApplication}
+                    />
+                )}
             </div>
         );
     };

@@ -17,3 +17,11 @@ export interface EmailData {
     isApplicationEmail: boolean;
 }
 
+export interface Email {
+    id: string;
+    subject: string;
+    from: string;
+    date: string;
+    content: string;
+    isFollowUp?: boolean;
+}
