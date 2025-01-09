@@ -25,8 +25,8 @@ export const checkForNewApplications = async () => {
         
         const response = await gmail.users.messages.list({
             userId: 'me',
-            q: 'subject:(application OR applied OR confirmation OR thank you OR received OR status)',
-            maxResults: 300
+            q: 'subject:("thank you for applying" OR "application received" OR "application confirmed" OR "application status" OR "we received your application") -subject:("job alert" OR "jobs for you" OR "new jobs" OR "opportunities" OR "job recommendations")',
+            maxResults: 10
         });
         console.log('Found emails:', response.data.messages?.length || 0);
 

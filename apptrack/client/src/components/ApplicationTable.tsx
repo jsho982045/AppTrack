@@ -24,9 +24,9 @@ const ApplicationTable = ({ applications, onDelete, onEdit }: ApplicationTablePr
 
     const sortedApplications = [...applications].sort((a, b) => {
         if (sortField === 'dateApplied') {
-            return sortDirection === 'asc' 
-                ? new Date(a[sortField]).getTime() - new Date(b[sortField]).getTime()
-                : new Date(b[sortField]).getTime() - new Date(a[sortField]).getTime();
+            const dateA = new Date(a[sortField]).getTime();
+            const dateB = new Date(b[sortField]).getTime();
+            return sortDirection === 'asc' ? dateA - dateB : dateB - dateA;
         }
         return sortDirection === 'asc'
             ? String(a[sortField]).localeCompare(String(b[sortField]))

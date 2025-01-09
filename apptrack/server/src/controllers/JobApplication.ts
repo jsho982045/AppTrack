@@ -11,7 +11,8 @@ const parserService = new ParserService();
 
 export const getAllApplications = async (req: Request, res: Response) => {
     try {
-        const applications = await JobApplication.find().sort({ dateApplied: -1 });
+        const applications = await JobApplication.find()
+            .sort({ dateApplied: -1 });
         res.json(applications);
     }catch(error) {
         res.status(500).json({ message: 'Error fetching applications', error });
