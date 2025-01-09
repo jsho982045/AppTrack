@@ -6,6 +6,7 @@ import { getGmailClient } from '../auth/google';
 import axios from 'axios';
 import { TrainingEmail } from '../models/TrainingEmail';
 import { train } from '@tensorflow/tfjs-node';
+import { Email } from '../models/Email';
 
 const ML_SERVICE_URL = 'http://127.0.0.1:8000';
 
@@ -86,14 +87,32 @@ export const checkForNewApplications = async () => {
                         const newApp = await JobApplication.create({
                             ...parsedJob,
                             emailId: message.id
-                    });
+                        });
+                        await Email.create({
+                            subject,
+                            from,
+                            date: new Date(),
+                            content: fullBody,
+                            isFollowUp: false,
+                            applicationId: newApp._id
+                        });
+
                         console.log('New application added:', {
                             company: newApp.company,
                             position: newApp.position,
                             dateApplied: newApp.dateApplied,
                         });
                     } else {
-                        console.log('Skipping duplicate application for:', parsedJob.company);
+                        const followUpEmail = await Email.create({
+                            subject,
+                            from,
+                            date: new Date(),
+                            content: fullBody,
+                            isFollowUp: true,
+                            applicationId: existingApp._id
+                        });
+
+                        console.log('Added follow-up email for:', parsedJob.company);
                     }
                 }
             } catch (error) {

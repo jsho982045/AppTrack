@@ -2,13 +2,13 @@
 import axios from 'axios';
 import { IJobApplicationDocument } from '../models/JobApplication';
 
-interface EmailData {
+export interface EmailData {
     subject: string;
     content: string;
     from_email: string;
 }
 
-interface ParsedJobData {
+export interface ParsedJobData {
     company: string;
     position: string;
     dateApplied: string;

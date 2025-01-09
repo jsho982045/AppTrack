@@ -1,5 +1,5 @@
 // client/src/services/api.ts
-import { JobApplication } from '../types';
+import { JobApplication, Email } from '../types';
 
 const API_URL = 'http://localhost:3001/api';
 
@@ -131,4 +131,15 @@ export const parseEmail = async (emailData: {
     }
 };
 
-
+export const fetchApplicationEmails = async (applicationId: string): Promise<Email[]> => {
+    try {
+        const response = await fetch(`${API_URL}/applications/${applicationId}/emails`);
+        if (!response.ok) {
+            throw new Error('Failed to fetch application emails');
+        }
+        return response.json();
+    } catch (error) {
+        console.error('Error fetching application emails:', error);
+        throw error;
+    }
+};

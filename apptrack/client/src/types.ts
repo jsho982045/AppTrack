@@ -24,4 +24,5 @@ export interface Email {
     date: string;
     content: string;
     isFollowUp?: boolean;
+    applicationId: string;
 }

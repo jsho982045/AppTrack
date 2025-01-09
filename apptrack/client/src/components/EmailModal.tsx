@@ -1,14 +1,15 @@
 import { useState, useEffect } from 'react';
 import { X,  Mail } from 'lucide-react';
 import { JobApplication } from '../types';
+import { fetchApplicationEmails } from '../services/api';
 
-interface EmailModalProps {
+export interface EmailModalProps {
     isOpen: boolean;
     onClose: () => void;
     application: JobApplication;
 }
 
-interface Email {
+export interface Email {
     id: string;
     subject: string;
     from: string;
@@ -17,21 +18,19 @@ interface Email {
     isFollowUp?: boolean;
 }
 
-const EmailModal = ({ isOpen, onClose, application }: EmailModalProps) => {
+export const EmailModal = ({ isOpen, onClose, application }: EmailModalProps) => {
     const [emails, setEmails] = useState<Email[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedEmail, setSelectedEmail] = useState<string | null>(null);
 
     useEffect(() => {
         const fetchEmails = async () => {
-            if (application.emailId) {
+            if (application._id) {
                 setLoading(true);
                 try {
-                    // TODO: Replace with actual API call
-                    const response = await fetch(`/api/applications/${application._id}/emails`);
-                    const data = await response.json();
+                    const data = await fetchApplicationEmails(application._id); 
                     setEmails(data);
-                    setSelectedEmail(data[0]?.id); // Select first email by default
+                    setSelectedEmail(data[0]?.id);
                 } catch (error) {
                     console.error('Failed to fetch emails:', error);
                 } finally {

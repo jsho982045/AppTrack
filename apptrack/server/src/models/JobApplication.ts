@@ -1,7 +1,7 @@
 // server/src/models/JobApplication.ts
 import mongoose from 'mongoose';
 
-interface JobApplication {
+export interface JobApplication {
     id?: string;
     company: string;
     position: string;
@@ -10,10 +10,9 @@ interface JobApplication {
     emailId?: string;
 }
 
-interface IJobApplicationDocument extends JobApplication {
+export interface IJobApplicationDocument extends JobApplication {
     emailConfirmation?: string;
     lastUpdated: Date;
-    emailId?: string;
 }
 
 const jobApplicationSchema = new mongoose.Schema<IJobApplicationDocument>({
