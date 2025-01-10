@@ -6,6 +6,7 @@ import AddApplicationModal from './AddApplicationModal';
 import EditApplicationModal from './EditApplicationModal';
 import ApplicationTable from './ApplicationTable';
 import ApplicationSearch from './ApplicationSearch';
+import ConfirmDeleteModal from './ConfirmDeleteModal';
 
 const Dashboard = () => {
     const [applications, setApplications] = useState<JobApplication[]>([]);
@@ -15,6 +16,8 @@ const Dashboard = () => {
     const[isEditModalOpen, setIsEditModalOpen] = useState(false);
     const[currentApplication, setCurrentApplication] = useState<JobApplication | null>(null);
     const [filteredApplications, setFilteredApplications] = useState<JobApplication[]>([]);
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [applicationToDelete, setApplicationToDelete] = useState<JobApplication | null>(null);
 
 
     const handleAddApplication = async (newApplication: Omit<JobApplication, '_id'>) => {
@@ -33,14 +36,25 @@ const Dashboard = () => {
     };
 
     const handleDeleteApplication = async (id: string) => {
+        
+        const application = applications.find(app => app._id === id);
+        setApplicationToDelete(application || null);
+        setIsDeleteModalOpen(true);
+    };
+
+    const confirmDelete = async () => {
+        if (!applicationToDelete?._id) return;
+
         try {
-            await deleteApplication(id);
-            setApplications(prev => prev.filter(app => app._id !== id));
+            await deleteApplication(applicationToDelete._id);
+            setApplications(prev => prev.filter(app => app._id != applicationToDelete._id));
+            setIsDeleteModalOpen(false);
+            setApplicationToDelete(null);
         } catch(err) {
             setError('Failed to delete application');
-            console.error('Error deleting applications:', err);
-        } 
-    };
+            console.error('Error deleting application:', err);
+        }
+    }
 
     const handleEditApplication = (application: JobApplication) => {
         setCurrentApplication(application);
@@ -165,6 +179,17 @@ const Dashboard = () => {
                         onClose={() => setIsEditModalOpen(false)}
                         onSubmit={handleUpdateApplication}
                         application={currentApplication}
+                    />
+                )}
+                {applicationToDelete && (
+                    <ConfirmDeleteModal
+                        isOpen={isDeleteModalOpen}
+                        onClose={() => {
+                            setIsDeleteModalOpen(false);
+                            setApplicationToDelete(null);
+                        }}
+                        onConfirm={confirmDelete}
+                        company={applicationToDelete.company}
                     />
                 )}
             </div>
