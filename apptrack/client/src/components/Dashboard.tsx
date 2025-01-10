@@ -82,44 +82,44 @@ const Dashboard = () => {
 
     return (
         <div className="min-h-screen bg-gray-100">
-            <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-                <div className="flex justify-between items-center mb-8">
-                    <h1 className="text-3xl font-bold text-gray-900">
+            <div className="w-full px-6 py-6">
+                <div className="flex justify-between items-center mb-6">
+                    <h1 className="text-2xl font-bold text-gray-900">
                         Job Applications Dashboard
                     </h1>
-                    <div className="spacex-4">
-                        <button
-                            onClick={() => setIsModalOpen(true)}
-                            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                    <button
+                        onClick={() => setIsModalOpen(true)}
+                        className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
                     >
                         Add Application
                     </button>
                 </div>
-            </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                    <div className="bg-white p-6 rounded-lg shadow">
-                        <h3 className="text-lg font-medium text-gray-900">Total Applications</h3>
-                        <p className="text-2xl font-bold text-blue-600">{filteredApplications.length}</p>
+                <div className="grid grid-cols-3 gap-6 mb-6">
+                    <div className="bg-white p-4 rounded-lg shadow">
+                        <h3 className="text-sm font-medium text-gray-700">Total Applications</h3>
+                        <p className="text-xl font-bold text-blue-600">{filteredApplications.length}</p>
                     </div>
 
-                    <div className="bg-white p-6 rounded-lg shadow">
-                        <h3 className="text-lg font-medium text-gray-900">In Progress</h3>
-                        <p className="text-2xl font-bold text-yellow-600">
+                    <div className="bg-white p-4 rounded-lg shadow">
+                        <h3 className="text-sm font-medium text-gray-700">In Progress</h3>
+                        <p className="text-xl font-bold text-yellow-600">
                             {filteredApplications.filter(app => app.status === 'interviewing').length}
                         </p>
                     </div>
 
-                    <div className="bg-white p-6 rounded-lg shadow">
-                        <h3 className="text-lg font-medium text-gray-900">Responses</h3>
+                    <div className="bg-white p-4 rounded-lg shadow">
+                        <h3 className="text-sm font-medium text-gray-700">Responses</h3>
                         <p className="text-2xl font-bold text-green-600">
                             {filteredApplications.filter(app => app.status !== 'applied').length}
                         </p>
                     </div>
                 </div>
 
-                <div className="bg-white shadow rounded-lg p-6">
-                    <h2 className="text-xl font-semibold mb-4">Recent Applications</h2>
+                <div className="bg-white shadow rounded-lg">
+                    <div className='p-4 border-b'>
+                        <h2 className="text-lg font-semibold">Recent Applications</h2>
+                    </div>
                     {loading && <div className="text-center py-4">Loading...</div>}
 
                     {error && (
@@ -136,15 +136,19 @@ const Dashboard = () => {
 
                     {!loading && !error && applications.length > 0 && (
                         <>
-                            <ApplicationSearch
-                                applications={applications}
-                                onFilter={setFilteredApplications}
-                            />
-                            <ApplicationTable 
-                                applications={filteredApplications} 
-                                onDelete={handleDeleteApplication}
-                                onEdit={handleEditApplication}
-                            />
+                            <div className="px-4">
+                                <ApplicationSearch
+                                    applications={applications}
+                                    onFilter={setFilteredApplications}
+                                />
+                            </div>
+                            <div className='overflow-x-auto'>
+                                <ApplicationTable 
+                                    applications={filteredApplications} 
+                                    onDelete={handleDeleteApplication}
+                                    onEdit={handleEditApplication}
+                                />
+                            </div>
                         </>
                     )}
                 </div>

@@ -54,7 +54,7 @@ export const EmailModal = ({ isOpen, onClose, application }: EmailModalProps) =>
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg w-full max-w-4xl h-[80vh] flex flex-col">
+            <div className="bg-white rounded-lg w-full h-screen md:h-[90vh] md:max-w-4xl md:mx-4">
                 {/* Header */}
                 <div className="flex justify-between items-center p-4 border-b">
                     <h2 className="text-xl font-semibold">
