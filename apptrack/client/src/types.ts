@@ -8,6 +8,8 @@ export interface JobApplication {
     emailId?: string;
 }
 
+
+/*
 export interface EmailData {
     _id: string;
     subject: string;
@@ -15,7 +17,8 @@ export interface EmailData {
     from: string;
     receivedDate: string;
     isApplicationEmail: boolean;
-}
+} 
+*/
 
 export interface Email {
     id: string;

@@ -16,6 +16,7 @@ export interface Email {
     date: string;
     content: string;
     isFollowUp?: boolean;
+    applicationId: string;
 }
 
 export const EmailModal = ({ isOpen, onClose, application }: EmailModalProps) => {
@@ -28,7 +29,9 @@ export const EmailModal = ({ isOpen, onClose, application }: EmailModalProps) =>
             if (application._id) {
                 setLoading(true);
                 try {
-                    const data = await fetchApplicationEmails(application._id); 
+                    console.log('Fetching emails for:', application._id);
+                    const data = await fetchApplicationEmails(application._id);
+                    console.log('Received email data:', data); 
                     setEmails(data);
                     setSelectedEmail(data[0]?.id);
                 } catch (error) {
@@ -47,6 +50,7 @@ export const EmailModal = ({ isOpen, onClose, application }: EmailModalProps) =>
     if (!isOpen) return null;
 
     const selectedEmailData = emails.find(email => email.id === selectedEmail);
+    console.log('Selected Email Full Data:', selectedEmailData);
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -105,23 +109,33 @@ export const EmailModal = ({ isOpen, onClose, application }: EmailModalProps) =>
                         {loading ? (
                             <div className="text-center">Loading email content...</div>
                         ) : selectedEmailData ? (
-                            <div>
-                                <div className="mb-6">
+                            <div className="h-full flex flex-col">
+                                <div className="mb-6 bg-gray-50 p-4 rounded">
                                     <h3 className="text-xl font-medium mb-2">
                                         {selectedEmailData.subject}
                                     </h3>
                                     <div className="text-sm text-gray-500 space-y-1">
                                         <p>From: {selectedEmailData.from}</p>
-                                        <p>Date: {new Date(selectedEmailData.date).toLocaleString()}</p>
+                                        <p>Date: {selectedEmailData.date.toLocaleString()}</p>
                                     </div>
                                 </div>
-                                <div className="prose max-w-none">
-                                    {selectedEmailData.content}
+                                <div className="flex-1 bg-white border rounded-lg p-6 overflow-y-auto">
+                                    {selectedEmailData.content.split('\n').map((line, i) => (
+                                        <p key={i} className="mb-2 text-gray-900">
+                                            {line}
+                                        </p>
+                                    ))}
                                 </div>
                             </div>
                         ) : (
                             <div className="text-center text-gray-500">
-                                No email selected
+                                <p className="text-lg font-bold">No email selected</p>
+                                <div className="mt-4 p-4 bg-red-100 rounded">
+                                    <p className="font-bold text-red-800">DEBUG:</p>
+                                    <p>Selected Email ID: {selectedEmail}</p>
+                                     <p>Available Emails: {emails.length}</p>
+                                    <p>Application ID: {application._id}</p>
+                                </div>
                             </div>
                         )}
                     </div>

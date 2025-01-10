@@ -6,25 +6,33 @@ import { JobApplication } from '../models/JobApplication';
 export const getApplicationEmails = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
+        console.log('Looking for application:', id);
 
         const application = await JobApplication.findById(id);
-        if(!application) {
-            return res.status(404).json({ message: 'Application not found'});
+        console.log('Found application:', application);
+        if(!application || !application.emailId) {
+            return res.status(404).json({ message: 'Application or email ID not found'});
         }
 
-        const email = await TrainingEmail.findOne({ emailId: application.emailId });
+        const email = await TrainingEmail.findOne({ 
+            emailId: application.emailId 
+        });
+        console.log('Found email:', email);
+
         if (!email) {
             return res.json([]);
         }
 
         const formattedEmail = {
-            id: email._id,
+            id: email._id.toString(),
             subject: email.subject,
             from: email.from,
-            date: email.receivedDate,
+            date: email.receivedDate.toISOString(),
             content: email.content,
-            isFollowUp: false
+            isFollowUp: false,
+            applicationId: application._id.toString()
         };
+        console.log('Sending formatted email:', formattedEmail);
         res.json([formattedEmail]);
     } catch (error) {
         console.error('Error fetching emails:', error);
