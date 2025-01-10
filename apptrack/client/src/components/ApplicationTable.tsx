@@ -59,6 +59,20 @@ const ApplicationTable = ({ applications, onDelete, onEdit }: ApplicationTablePr
     };
 }, [openActionId]);
 
+    useEffect(() => {
+        const handleApplicationDeleted = () => {
+            setSelectedApplication(null);
+        };
+
+        window.addEventListener('applicationDeleted', handleApplicationDeleted);
+        return () => {
+            window.removeEventListener('applicationDeleted', handleApplicationDeleted);
+        };
+    }, []);
+
+
+
+
     return (
         <div className="w-full overflow-x-auto">
             <table className="w-full table-fixed divide-y divide-gray-200">

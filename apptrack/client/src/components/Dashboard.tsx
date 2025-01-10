@@ -47,14 +47,18 @@ const Dashboard = () => {
 
         try {
             await deleteApplication(applicationToDelete._id);
-            setApplications(prev => prev.filter(app => app._id != applicationToDelete._id));
+            setApplications(prev => prev.filter(app => app._id !== applicationToDelete._id));
+            
+            const event = new CustomEvent('applicationDeleted');
+            window.dispatchEvent(event);
+            
             setIsDeleteModalOpen(false);
             setApplicationToDelete(null);
         } catch(err) {
             setError('Failed to delete application');
             console.error('Error deleting application:', err);
         }
-    }
+    };
 
     const handleEditApplication = (application: JobApplication) => {
         setCurrentApplication(application);
