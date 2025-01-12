@@ -1,14 +1,16 @@
+// server/src/index.ts
+import cors from 'cors';
+import { get } from 'http';
+import dotenv from 'dotenv';
 import express from 'express';
 import mongoose from 'mongoose';
-import dotenv from 'dotenv';
-import { getAllApplications, createApplication, deleteApplication, updateApplication, clearAllCollections, reparseApplications } from './controllers/JobApplication';
-import { getGmailClient, getGoogleAuthURL, getGoogleTokens } from './auth/google';
-import { checkForNewApplications } from './services/gmail';
-import cors from 'cors';
-import { Token } from './models/Token';
 import { MongoClient} from 'mongodb';
+import { Token } from './models/Token';
 import { getApplicationEmails } from './controllers/Email';
-import { get } from 'http';
+import { checkForNewApplications } from './services/gmail';
+import { getGmailClient, getGoogleAuthURL, getGoogleTokens } from './auth/google';
+import { getAllApplications, createApplication, deleteApplication, updateApplication, clearAllCollections, reparseApplications } from './controllers/JobApplication';
+
 
 
 dotenv.config();
@@ -49,8 +51,8 @@ app.get('/api/applications/:id/emails', getApplicationEmails);
 app.post('/api/applications', createApplication);
 app.post('/api/collections/clear', clearAllCollections);
 app.post('/api/applications/reparse', reparseApplications);
-app.delete('/api/applications/:id', deleteApplication);
 app.put('/api/applications/:id', updateApplication)
+app.delete('/api/applications/:id', deleteApplication);
 
 
 app.get('/auth/google', (req, res) => {

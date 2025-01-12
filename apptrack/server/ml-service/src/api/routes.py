@@ -1,9 +1,9 @@
 # server/ml-service/src/api/routes.py
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
 from typing import Dict
+from pydantic import BaseModel
+from fastapi import FastAPI, HTTPException
 from src.models.job_parser import JobParser
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
 parser = JobParser()

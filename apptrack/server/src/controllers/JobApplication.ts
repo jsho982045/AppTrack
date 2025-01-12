@@ -1,19 +1,31 @@
 // server/src/controllers/JobApplication.ts
+import { Email } from '../models/Email';
 import { Request, Response } from 'express';
-import { JobApplication } from '../models/JobApplication'; 
 import { ParserService } from '../services/parser';
-import { checkForNewApplications } from '../services/gmail';
 import { reparseAllEmails } from '../services/gmail';
-import { join } from 'path';
 import { TrainingEmail } from '../models/TrainingEmail';
+import { JobApplication } from '../models/JobApplication'; 
+import { checkForNewApplications } from '../services/gmail';
+import { join } from 'path';
 
 const parserService = new ParserService();
 
-export const getAllApplications = async (req: Request, res: Response) => {
+export const getAllApplications = async (
+    req: Request, 
+    res: Response
+) => {
     try {
         const applications = await JobApplication.find()
             .sort({ dateApplied: -1 });
-        res.json(applications);
+            // Ensures dates are properly formatted
+        const formattedApplications = applications.map(app => {
+            const appObject = app.toObject();
+            return {
+                ...appObject,
+                dateApplied: new Date(appObject.dateApplied).toISOString()
+            };
+        });
+        res.json(formattedApplications);
     }catch(error) {
         res.status(500).json({ message: 'Error fetching applications', error });
     }
@@ -107,6 +119,7 @@ export const clearAllCollections = async (req: Request, res: Response): Promise<
     try {
         await JobApplication.deleteMany({});
         await TrainingEmail.deleteMany({});
+        await Email.deleteMany({});
         res.json({ message: 'All collections cleared' });
     } catch (error) {
         res.status(500).json({ message: 'Error clearing collections', error });

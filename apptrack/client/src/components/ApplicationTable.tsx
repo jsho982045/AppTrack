@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
-import { ChevronDown, ChevronUp, Mail, MoreVertical, Pencil, Trash } from 'lucide-react';
-import { JobApplication } from '../types';
 import EmailModal from './EmailModal';
+import { JobApplication } from '../types';
+import { useState, useEffect } from 'react';
+import { formatDateToEST } from '../utils/dateFormat';
+import { ChevronDown, ChevronUp, Mail, MoreVertical, Pencil, Trash } from 'lucide-react';
 
 interface ApplicationTableProps {
     applications: JobApplication[];
@@ -70,9 +71,6 @@ const ApplicationTable = ({ applications, onDelete, onEdit }: ApplicationTablePr
         };
     }, []);
 
-
-
-
     return (
         <div className="w-full">
             {/* Large screens - normal table */}
@@ -129,7 +127,7 @@ const ApplicationTable = ({ applications, onDelete, onEdit }: ApplicationTablePr
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
                                     <div className="text-sm text-gray-500">
-                                        {new Date(app.dateApplied).toLocaleDateString()}
+                                        {formatDateToEST(app.dateApplied, false)}
                                     </div>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
@@ -193,7 +191,7 @@ const ApplicationTable = ({ applications, onDelete, onEdit }: ApplicationTablePr
                                 </div>
                                 <div className="text-sm text-gray-600 mt-1 truncate">{app.position}</div>
                                 <div className="text-sm text-gray-500 mt-2">
-                                    {new Date(app.dateApplied).toLocaleDateString()}
+                                    {formatDateToEST(app.dateApplied, false)}
                                 </div>
                             </div>
                             <button

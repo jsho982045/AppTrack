@@ -1,7 +1,10 @@
-import { useState, useEffect } from 'react';
+// client/src/components/EmailModal.tsx
+
 import { X,  Mail } from 'lucide-react';
 import { JobApplication } from '../types';
+import { useState, useEffect } from 'react';
 import { fetchApplicationEmails } from '../services/api';
+import { formatDateToEST } from '../utils/dateFormat';
 
 export interface EmailModalProps {
     isOpen: boolean;

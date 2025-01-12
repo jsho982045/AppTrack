@@ -1,6 +1,7 @@
+// client/src/components/ApplicationSearch.tsx
+import { JobApplication } from '../types';
 import { useState, useEffect } from 'react';
 import { Search, Filter } from 'lucide-react';
-import { JobApplication } from '../types';
 
 interface SearchFilterProps {
     onFilter: (applications: JobApplication[]) => void;

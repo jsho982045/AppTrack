@@ -1,8 +1,8 @@
 // diagnostics.ts
-import { MongoClient, ObjectId } from 'mongodb';
-import { EmailData, cleanText, extractEmailDomain, normalizeCompanyName  } from './trainParser';
-import { atsProviders, parseJobEmail } from './jobParser';
 import { Sample } from 'natural';
+import { MongoClient, ObjectId } from 'mongodb';
+import { atsProviders, parseJobEmail } from './jobParser';
+import { EmailData, cleanText, extractEmailDomain, normalizeCompanyName  } from './trainParser';
 
 async function processRawEmail(doc: any) {
     if (!doc) return null;

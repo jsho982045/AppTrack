@@ -1,12 +1,13 @@
 // server/src/services/gmail.ts
-import { google, gmail_v1 } from 'googleapis';
-import { Token } from '../models/Token';
-import { JobApplication } from '../models/JobApplication';
-import { getGmailClient } from '../auth/google';
 import axios from 'axios';
-import { TrainingEmail } from '../models/TrainingEmail';
-import { train } from '@tensorflow/tfjs-node';
 import { Email } from '../models/Email';
+import { Token } from '../models/Token';
+import { train } from '@tensorflow/tfjs-node';
+import { google, gmail_v1 } from 'googleapis';
+import { getGmailClient } from '../auth/google';
+import { TrainingEmail } from '../models/TrainingEmail';
+import { JobApplication } from '../models/JobApplication';
+
 
 const ML_SERVICE_URL = 'http://127.0.0.1:8000';
 
@@ -25,7 +26,7 @@ export const checkForNewApplications = async () => {
         const response = await gmail.users.messages.list({
             userId: 'me',
             q: 'subject:("thank you for applying" OR "application received" OR "application confirmed" OR "application status" OR "we received your application") -subject:("job alert" OR "jobs for you" OR "new jobs" OR "opportunities" OR "job recommendations")',
-            maxResults: 10
+            maxResults: 50
         });
 
         const messages = response.data.messages || [];
@@ -47,6 +48,7 @@ export const checkForNewApplications = async () => {
                 const headers = payload.headers;
                 const subject = headers.find((h) => h.name === 'Subject')?.value || '';
                 const from = headers.find((h) => h.name === 'From')?.value || '';
+                const receivedDate = new Date(headers.find((h) => h.name === 'Date')?.value || '');
                 const fullBody = decodeEmailBody(payload);
 
                 const trainingEmail = new TrainingEmail ({
@@ -54,7 +56,7 @@ export const checkForNewApplications = async () => {
                     content: fullBody,
                     from,
                     emailId: message.id,
-                    receivedDate: new Date(),
+                    receivedDate: receivedDate,
                     isApplicationEmail: true,
                     verified: false,
                     processingStatus: 'pending'
@@ -86,12 +88,13 @@ export const checkForNewApplications = async () => {
                     if (!existingApp) {
                         const newApp = await JobApplication.create({
                             ...parsedJob,
-                            emailId: message.id
+                            emailId: message.id,
+                            dateApplied: new Date(headers.find((h) => h.name === 'Date')?.value || '')
                         });
                         await Email.create({
                             subject,
                             from,
-                            date: new Date(),
+                            date: new Date(headers.find((h) => h.name === 'Date')?.value || ''),
                             content: fullBody,
                             isFollowUp: false,
                             applicationId: newApp._id
@@ -106,7 +109,7 @@ export const checkForNewApplications = async () => {
                         const followUpEmail = await Email.create({
                             subject,
                             from,
-                            date: new Date(),
+                            date: receivedDate,
                             content: fullBody,
                             isFollowUp: true,
                             applicationId: existingApp._id
@@ -181,7 +184,8 @@ export const reparseAllEmails = async () => {
                     // Create new job application
                     const newApp = await JobApplication.create({
                         ...parsedJob,
-                        emailId: email.emailId
+                        emailId: email.emailId,
+                        dateApplied: email.receivedDate
                     });
                     console.log('Processed application:', {
                         company: newApp.company,

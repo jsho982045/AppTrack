@@ -1,10 +1,10 @@
 // server/src/auth/google.ts
-import dotenv from 'dotenv';
-import { google } from 'googleapis';
-import { OAuth2Client } from 'google-auth-library';
-import { Token } from '../models/Token';
 import path from 'path';
+import dotenv from 'dotenv';
 import { error } from 'console';
+import { google } from 'googleapis';
+import { Token } from '../models/Token';
+import { OAuth2Client } from 'google-auth-library';
 
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 

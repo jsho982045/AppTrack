@@ -1,3 +1,4 @@
+// server/src/models/Email.ts
 import mongoose, { trusted } from 'mongoose';
 
 export interface IEmail {

@@ -3,6 +3,20 @@ import { Request, Response } from 'express';
 import { TrainingEmail } from '../models/TrainingEmail';
 import { JobApplication } from '../models/JobApplication';
 
+function formatDateToEST(date: Date): string {
+    const options: Intl.DateTimeFormatOptions = {
+        timeZone: 'America/New_York',
+        month: '2-digit',
+        day: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+    };
+    
+    return new Date(date).toLocaleString('en-US', options);
+}
+
 export const getApplicationEmails = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
@@ -27,7 +41,7 @@ export const getApplicationEmails = async (req: Request, res: Response) => {
             id: email._id.toString(),
             subject: email.subject,
             from: email.from,
-            date: email.receivedDate.toISOString(),
+            date: formatDateToEST(email.receivedDate),
             content: email.content,
             isFollowUp: false,
             applicationId: application._id.toString()

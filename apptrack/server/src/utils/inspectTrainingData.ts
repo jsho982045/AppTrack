@@ -1,6 +1,6 @@
 // server/src/utils/inspectTrainingData.ts
-import dotenv from 'dotenv';
 import path from 'path';
+import dotenv from 'dotenv';
 import { MongoClient } from 'mongodb';
 
 // Load environment variables from .env file

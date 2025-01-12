@@ -1,12 +1,12 @@
 // client/src/components/Dashboard.tsx
-import { useState, useEffect } from 'react';
 import { JobApplication } from '../types';
-import { createApplication, fetchApplications, deleteApplication, updateApplication } from '../services/api';
-import AddApplicationModal from './AddApplicationModal';
-import EditApplicationModal from './EditApplicationModal';
+import { useState, useEffect } from 'react';
 import ApplicationTable from './ApplicationTable';
 import ApplicationSearch from './ApplicationSearch';
 import ConfirmDeleteModal from './ConfirmDeleteModal';
+import AddApplicationModal from './AddApplicationModal';
+import EditApplicationModal from './EditApplicationModal';
+import { createApplication, fetchApplications, deleteApplication, updateApplication } from '../services/api';
 
 const Dashboard = () => {
     const [applications, setApplications] = useState<JobApplication[]>([]);
