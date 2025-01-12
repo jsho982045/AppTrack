@@ -55,7 +55,7 @@ const SearchFilter = ({ onFilter, applications }: SearchFilterProps) => {
                 <select
                     value={selectedStatus}
                     onChange={(e) => setSelectedStatus(e.target.value)}
-                    className="border rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="border rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer"
                 >
                     <option value="all">All Status</option>
                     <option value="applied">Applied</option>
