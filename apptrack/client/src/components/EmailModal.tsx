@@ -69,7 +69,7 @@ export const EmailModal = ({ isOpen, onClose, application }: EmailModalProps) =>
                 </div>
 
                 {/* Content */}
-                <div className="flex flex-1 overflow-hidden">
+                <div className="flex flex-1 overflow-hidden h-[calc(100%-4rem)]">
                     {/* Email List Sidebar */}
                     <div className="w-1/3 border-r overflow-y-auto">
                         {loading ? (
@@ -105,12 +105,12 @@ export const EmailModal = ({ isOpen, onClose, application }: EmailModalProps) =>
                     </div>
 
                     {/* Email Content */}
-                    <div className="flex-1 overflow-y-auto p-6">
+                    <div className="flex-1 overflow-y-hidden flex flex-col">
                         {loading ? (
-                            <div className="text-center">Loading email content...</div>
+                            <div className="text-center p-6">Loading email content...</div>
                         ) : selectedEmailData ? (
-                            <div className="h-full flex flex-col">
-                                <div className="mb-6 bg-gray-50 p-4 rounded">
+                            <div className="flex flex-col h-full p-6">
+                                <div className="mb-6 bg-gray-50 p-4 rounded flex-shrink-0">
                                     <h3 className="text-xl font-medium mb-2">
                                         {selectedEmailData.subject}
                                     </h3>
