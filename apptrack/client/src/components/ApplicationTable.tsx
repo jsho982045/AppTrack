@@ -103,7 +103,7 @@ const ApplicationTable = ({ applications, onDelete, onEdit }: ApplicationTablePr
                             </th>
                             <th className="w-[15%] px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
                                 onClick={() => handleSort('status')}>
-                                <div className="flex items-center space-x-1">
+                                <div className="flex items-center space-x-1 ">
                                     <span>Status</span>
                                     <SortIcon field="status" />
                                 </div>
@@ -183,7 +183,7 @@ const ApplicationTable = ({ applications, onDelete, onEdit }: ApplicationTablePr
             <div className="md:hidden">
                 {sortedApplications.map(app => (
                     <div key={app._id} 
-                        className="mb-4 bg-white rounded-lg shadow p-4"
+                        className={`mb-4 bg-white rounded-lg shadow p-4  ${app.emailId ? 'cursor-pointer' : ''}`}
                         onClick={() => handleRowClick(app)}>
                         <div className="flex justify-between items-start">
                             <div className="flex-1">
