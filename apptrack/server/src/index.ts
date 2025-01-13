@@ -1,125 +1,123 @@
-// server/src/index.ts
 import cors from 'cors';
 import { get } from 'http';
 import dotenv from 'dotenv';
-import express from 'express';
+import express, { Request, Response, NextFunction, RequestHandler} from 'express';
 import mongoose from 'mongoose';
-import { MongoClient} from 'mongodb';
+import { MongoClient } from 'mongodb';
 import { Token } from './models/Token';
 import { getApplicationEmails } from './controllers/Email';
 import { checkForNewApplications } from './services/gmail';
 import { getGmailClient, getGoogleAuthURL, getGoogleTokens } from './auth/google';
 import { getAllApplications, createApplication, deleteApplication, updateApplication, clearAllCollections, reparseApplications } from './controllers/JobApplication';
+import { initiateGoogleAuth, handleGoogleCallback, getAuthenticatedUser, logout } from './controllers/Auth';
+import session from 'express-session';
+import { User } from './models/User';
+import MongoStore from 'connect-mongo';
 
-
-
+// Load environment variables
 dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 3001;
 
-app.use(cors());
+// Session configuration
+app.use(session({
+    secret: process.env.SESSION_SECRET || 'your-secret-key',
+    resave: false,
+    saveUninitialized: false,
+    store: MongoStore.create({
+        mongoUrl: process.env.MONGODB_URI!
+    }),
+    cookie: {
+        maxAge: 1000 * 60 * 60 * 24 * 7, // 1 week
+        secure: process.env.NODE_ENV === 'production'
+    }
+}));
+
+// CORS configuration
+app.use(cors({
+    origin: process.env.CLIENT_URL || 'http://localhost:5173',
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+// Middleware
 app.use(express.json());
 app.use((req, res, next) => {
     console.log(`${req.method} request to ${req.url}`);
     next();
 });
 
-const handleAuthError = (error: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+// Auth middleware
+const requireAuth = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        if (!req.session.userId) {
+            res.status(401).json({ error: 'Authentication required' });
+            return;
+        }
+
+        const user = await User.findById(req.session.userId);
+        if (!user) {
+            res.status(401).json({ error: 'User not found' });
+            return;
+        }
+
+        (req as any).user = user;
+        next();
+    } catch (error) {
+        next(error);
+    }
+};
+
+const handleAuthError = (error: any, req: Request, res: Response, next: NextFunction): void => {
     if (error.code === 'AUTH_REQUIRED') {
         const authUrl = getGoogleAuthURL();
-        return res.redirect(authUrl);
+        res.redirect(authUrl);
+        return;
     }
     next(error);
 };
 
+// Database connection
 mongoose.connect(process.env.MONGODB_URI!)
     .then(async () => {
-        // Add small delay to ensure connection is ready
         await new Promise(resolve => setTimeout(resolve, 1000));
-        
         console.log('Connected to MongoDB Atlas successfully');
-        if (mongoose.connection.db) {  // Add this check
+        if (mongoose.connection.db) {
             const collections = await mongoose.connection.db.collections();
+            console.log('Available collections:', collections.map(c => c.collectionName));
         }
-    }).catch((error => {
-        console.error('MongoDB connection error: ', error);
-    }));
+    })
+    .catch((error) => {
+        console.error('MongoDB connection error:', error);
+    });
 
-app.get('/api/applications', getAllApplications);
-app.get('/api/applications/:id/emails', getApplicationEmails);
-app.post('/api/applications', createApplication);
-app.post('/api/collections/clear', clearAllCollections);
-app.post('/api/applications/reparse', reparseApplications);
-app.put('/api/applications/:id', updateApplication)
-app.delete('/api/applications/:id', deleteApplication);
+// Auth routes
+app.get('/auth/google', initiateGoogleAuth);
+app.get('/auth/google/callback', handleGoogleCallback);
+app.get('/api/auth/user', getAuthenticatedUser as RequestHandler);
+app.post('/api/auth/logout', logout);
 
+// Protected routes
+app.get('/api/applications', requireAuth, getAllApplications as RequestHandler);
+app.get('/api/applications/:id/emails', requireAuth, getApplicationEmails as RequestHandler);
+app.post('/api/applications', requireAuth, createApplication as RequestHandler);
+app.post('/api/collections/clear', requireAuth, clearAllCollections as RequestHandler);
+app.post('/api/applications/reparse', requireAuth, reparseApplications as RequestHandler);
+app.put('/api/applications/:id', requireAuth, updateApplication as RequestHandler);
+app.delete('/api/applications/:id', requireAuth, deleteApplication as RequestHandler);
 
-app.get('/auth/google', (req, res) => {
-    const authUrl = getGoogleAuthURL();
-    res.redirect(authUrl);
-});
-
-app.post('/api/check-emails', async (req, res) => {
+app.post('/api/check-emails', requireAuth, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         await checkForNewApplications();
         res.json({ message: 'Email check completed' });
     } catch (error: any) {
-        if (error.code === 'AUTH_REQUIRED') {
-            const authUrl = getGoogleAuthURL();
-            return res.redirect(authUrl);
-        }
-        res.status(500).json({ error: 'Failed to check emails' });
+        next(error);
     }
 });
 
-app.get('/auth/google', (req, res) => {
-    const authUrl = getGoogleAuthURL();
-    res.redirect(authUrl);
-});
-
-app.get('/auth/google/callback', async (req, res) => {
-    try {
-        const code = req.query.code as string;
-        console.log('Received auth code:', code);
-        const tokens = await getGoogleTokens(code);
-        console.log('Received tokens:', tokens);
-
-        if(!tokens.refresh_token || !tokens.access_token || !tokens.expiry_date){
-            throw new Error('Missing required token fields');
-        }
-
-        // Clear existing tokens and save new ones
-        await Token.deleteMany({});
-        const tokenDoc = new Token({
-            refresh_token: tokens.refresh_token,
-            access_token: tokens.access_token,
-            expiry_date: tokens.expiry_date
-        });
-        await tokenDoc.save();
-        
-        console.log('Saved token document:', {
-            refresh_token: 'Present',
-            access_token: 'Present',
-            expiry_date: tokenDoc.expiry_date
-        });
-
-        const gmail = await getGmailClient();
-        const testResponse = await gmail.users.getProfile({ userId: 'me' });
-        console.log('Gmail connection test:', testResponse.data);
-
-        res.json({ 
-            message: 'Setup complete! You can now close this window.',
-            status: 'success',
-            emailAddress: testResponse.data.emailAddress
-        });
-    } catch (error) {
-        console.error('Google auth error:', error);
-        res.status(500).json({ message: 'Authentication failed' });
-    }
-});
-
-app.get('/api/emails/training', async (req, res) => {
+app.get('/api/emails/training', requireAuth, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         if (!mongoose.connection.db) {
             throw new Error('Database connection not established');
@@ -128,35 +126,31 @@ app.get('/api/emails/training', async (req, res) => {
         const emails = await collection.find({}).toArray();
         res.json(emails);
     } catch (error) {
-        console.error('Error fetching training emails:', error);
-        res.status(500).json({ error: 'Failed to fetch training emails' });
+        next(error);
     }
 });
 
-// Error handling middleware must be after all routes
+// Error handling middleware
 app.use(handleAuthError);
 
-// Email check interval
-setInterval(async () => {
-    console.log('Checking for new job applications...');
-    await checkForNewApplications().catch(error => {
+// Automatic email checking
+const checkEmails = async (): Promise<void> => {
+    try {
+        console.log('Checking for new job applications...');
+        await checkForNewApplications();
+    } catch (error: any) {
         if (error.code === 'AUTH_REQUIRED') {
             console.log('Auth required, waiting for next check...');
         } else {
             console.error('Error checking applications:', error);
         }
-    });
-}, 30 * 60 * 1000);
-
-// Initial check (with better error handling)
-checkForNewApplications().catch(error => {
-    if (error.code === 'AUTH_REQUIRED') {
-        console.log('Initial check requires authentication...');
-    } else {
-        console.error('Error in initial check:', error);
     }
-});
+};
 
+setInterval(checkEmails, 30 * 60 * 1000);
+checkEmails().catch(console.error);
+
+// Start server
 app.listen(port, () => {
     console.log(`Server running on port ${port}`);
 });
