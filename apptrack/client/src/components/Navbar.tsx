@@ -1,13 +1,11 @@
-import { useNavigate } from 'react-router-dom';
 import { authApi } from '../services/auth';
 
 const Navbar = () => {
-    const navigate = useNavigate();
 
     const handleLogout = async () => {
         try {
             await authApi.logout();
-            navigate('/login');
+            window.location.href = '/login';
         } catch (error) {
             console.error('Logout failed:', error);
         }

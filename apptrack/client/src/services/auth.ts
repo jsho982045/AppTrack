@@ -1,20 +1,14 @@
-const API_URL = import.meta.env.VITE_API_URL;
+import { api } from './api';  // Import the axios instance you already have
 
 export const authApi = {
     checkAuthStatus: async () => {
-        const response = await fetch(`${API_URL}/api/auth/user`, {
-            credentials: 'include'
-        });
-        if (!response.ok) throw new Error('Not authenticated');
-        return response.json();
+        const response = await api.get('/api/auth/user');
+        return response.data;
     },
 
     logout: async () => {
-        const response = await fetch(`${API_URL}/api/auth/logout`, {
-            method: 'POST',
-            credentials: 'include'
-        });
-        if (!response.ok) throw new Error('Logout failed');
-        return response.json();
+        await api.post('/api/auth/logout');
+        // After successful logout, update app state
+        window.location.href = '/login';  // Force a full page reload to clear state
     }
 };
