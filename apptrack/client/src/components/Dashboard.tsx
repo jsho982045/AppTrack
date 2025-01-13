@@ -1,6 +1,7 @@
 // client/src/components/Dashboard.tsx
 import { JobApplication } from '../types';
 import { useState, useEffect } from 'react';
+import Navbar from './Navbar';
 import ApplicationTable from './ApplicationTable';
 import ApplicationSearch from './ApplicationSearch';
 import ConfirmDeleteModal from './ConfirmDeleteModal';
@@ -100,6 +101,7 @@ const Dashboard = () => {
 
     return (
         <div className="min-h-screen bg-gray-100">
+            <Navbar />
             <div style={{ width: 'min(95vw, 1600px)' }} className="mx-auto py-6">
                 <div className="flex justify-between items-center mb-6">
                     <h1 className="text-2xl font-bold text-gray-900">
