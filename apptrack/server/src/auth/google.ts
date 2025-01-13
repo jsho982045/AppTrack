@@ -3,7 +3,7 @@ import path from 'path';
 import dotenv from 'dotenv';
 import { error } from 'console';
 import { google } from 'googleapis';
-import { Token } from '../models/Token';
+import { User } from '../models/User';
 import { OAuth2Client } from 'google-auth-library';
 
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
@@ -27,7 +27,11 @@ const oauth2Client = new OAuth2Client(clientId, clientSecret, redirectUri);
 export const getGoogleAuthURL = () => {
     return oauth2Client.generateAuthUrl({
         access_type: 'offline',
-        scope: ['https://www.googleapis.com/auth/gmail.readonly'],
+        scope: [
+            'https://www.googleapis.com/auth/gmail.readonly',
+            'profile',
+            'email'
+        ],
         prompt: 'consent'
     });
 };
@@ -51,34 +55,52 @@ export const refreshAccessToken = async (refreshToken: string) => {
     }
 };
 
-export const getGmailClient = async () => {
-    const tokenDoc = await Token.findOne();
-    if(!tokenDoc) {
+export const getGmailClient = async (userId: string) => {
+    const user = await User.findById(userId);
+    if(!user) {
         throw Object.assign(new Error('No authentication token found'), {
             code: 'AUTH_REQUIRED'
         });
     }
 
     try {
-        const newTokens = await refreshAccessToken(tokenDoc.refresh_token);
-
-        await Token.findByIdAndUpdate(
-            tokenDoc._id,
-            {
-                access_token: newTokens.access_token,
-                expiry_date: newTokens.expiry_date
-            },
-            { new: true }
-        );
+        const newTokens = await refreshAccessToken(user.tokens.refresh_token);
+        
+        user.tokens = {
+            ...user.tokens,
+            access_token: newTokens.access_token!,
+            expiry_date: newTokens.expiry_date!
+        };
+        await user.save();
 
         oauth2Client.setCredentials(newTokens);
         return google.gmail({ version: 'v1', auth: oauth2Client });
     }catch (error) {
         console.error('Error getting Gmail client', error);
-        await Token.deleteMany({});
         throw Object.assign(new Error('Authentication required'), {
             code: 'AUTH_REQUIRED'
         });
     }
 };
 
+export const getUserInfo = async (accessToken: string) => {
+    try {
+        oauth2Client.setCredentials({ access_token: accessToken });
+        
+        const oauth2 = google.oauth2({
+            auth: oauth2Client,
+            version: 'v2'
+        });
+
+        const { data } = await oauth2.userinfo.get();
+        
+        return {
+            email: data.email!,
+            id: data.id!,
+            name: data.name
+        };
+    } catch (error) {
+        console.error('Error fetching user info:', error);
+        throw error;
+    }
+};
