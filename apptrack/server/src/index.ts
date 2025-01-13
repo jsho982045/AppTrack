@@ -20,13 +20,28 @@ dotenv.config();
 const app = express();
 const port = process.env.PORT || 3001;
 
+
+// Database connection
+mongoose.connect(process.env.MONGODB_URI!)
+    .then(async () => {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        console.log('Connected to MongoDB Atlas successfully');
+        if (mongoose.connection.db) {
+            const collections = await mongoose.connection.db.collections();
+            console.log('Available collections:', collections.map(c => c.collectionName));
+        }
+    })
+    .catch((error) => {
+        console.error('MongoDB connection error:', error);
+});
+
 // Session configuration
 app.use(session({
     secret: process.env.SESSION_SECRET || 'your-secret-key',
     resave: false,
     saveUninitialized: false,
     store: MongoStore.create({
-        mongoUrl: process.env.MONGODB_URI!
+        mongoUrl: process.env.MONGODB_URI!,
     }),
     cookie: {
         maxAge: 1000 * 60 * 60 * 24 * 7, // 1 week
@@ -79,19 +94,7 @@ const handleAuthError = (error: any, req: Request, res: Response, next: NextFunc
     next(error);
 };
 
-// Database connection
-mongoose.connect(process.env.MONGODB_URI!)
-    .then(async () => {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        console.log('Connected to MongoDB Atlas successfully');
-        if (mongoose.connection.db) {
-            const collections = await mongoose.connection.db.collections();
-            console.log('Available collections:', collections.map(c => c.collectionName));
-        }
-    })
-    .catch((error) => {
-        console.error('MongoDB connection error:', error);
-    });
+
 
 // Auth routes
 app.get('/auth/google', initiateGoogleAuth);
@@ -114,6 +117,18 @@ app.post('/api/check-emails', requireAuth, async (req: Request, res: Response, n
         res.json({ message: 'Email check completed' });
     } catch (error: any) {
         next(error);
+    }
+});
+
+app.post('/api/dev/clear-sessions', async (req, res) => {
+    try {
+        if (!mongoose.connection.db) {
+            throw new Error('Database not connected');
+        }
+        await mongoose.connection.db.collection('sessions').deleteMany({});
+        res.json({ message: 'Sessions cleared' });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to clear sessions' });
     }
 });
 
