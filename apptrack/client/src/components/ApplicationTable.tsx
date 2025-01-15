@@ -199,7 +199,8 @@ const ApplicationTable = ({ applications, onDelete, onEdit }: ApplicationTablePr
                                     e.stopPropagation();
                                     toggleActions(app._id!);
                                 }}
-                                className="text-gray-400 hover:text-gray-600">
+                                className="text-blue-500 hover:text-blue-600 rounded-lg p-1 hover:bg-blue-50 transition-colors duration-200" // Changed text-gray-400 to text-blue-500
+                                >
                                 <MoreVertical className="w-5 h-5" />
                             </button>
                         </div>

@@ -8,6 +8,7 @@ import ConfirmDeleteModal from './ConfirmDeleteModal';
 import AddApplicationModal from './AddApplicationModal';
 import EditApplicationModal from './EditApplicationModal';
 import { createApplication, fetchApplications, deleteApplication, updateApplication } from '../services/api';
+import { ClipboardList, HourglassIcon, InboxIcon, PlusIcon } from 'lucide-react';
 
 const Dashboard = () => {
     const [applications, setApplications] = useState<JobApplication[]>([]);
@@ -135,67 +136,116 @@ const Dashboard = () => {
     return (
         <div className="min-h-screen bg-gray-100">
             <Navbar />
-            <button
-                onClick={handleClearAllData}
-                className="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600"
-            >
-                Clear Data
-            </button>
-            <div style={{ width: 'min(95vw, 1600px)' }} className="mx-auto py-6">
-                <div className="flex justify-between items-center mb-6">
-                    <h1 className="text-2xl font-bold text-gray-900">
-                        Job Applications Dashboard
-                    </h1>
-                    <button
-                        onClick={() => setIsModalOpen(true)}
-                        className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-                    >
-                        Add Application
-                    </button>
+            
+            {/* Main container with max width and padding */}
+            <div style={{ width: 'min(95vw, 1600px)' }} className="mx-auto py-6 px-4">
+                {/* Header section with title and actions */}
+                <div className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
+                    <div>
+                        <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
+                            AppTrack
+                        </h1>
+                        <p className="text-gray-600 mt-1">Track and manage your job applications</p>
+                    </div>
+                    <div className="flex space-x-3">
+                        <button
+                            onClick={handleClearAllData}
+                            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200"
+                        >
+                            Clear Data
+                        </button>
+                        <button
+                            onClick={() => setIsModalOpen(true)}
+                            className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 flex items-center space-x-2"
+                        >
+                            <PlusIcon className="w-4 h-4" />
+                            <span>Add Application</span>
+                        </button>
+                    </div>
                 </div>
-
+    
+                {/* Stats Grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mb-6">
-                    <div className="bg-white p-4 rounded-lg shadow">
-                        <h3 className="text-sm font-medium text-gray-700">Total Applications</h3>
-                        <p className="text-xl font-bold text-blue-600">{filteredApplications.length}</p>
+                    {/* Total Applications Card */}
+                    <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200 hover:shadow-lg transition-all duration-300">
+                        <div className="flex flex-col space-y-2">
+                            <h3 className="text-sm font-medium text-gray-600">Total Applications</h3>
+                            <div className="flex items-center justify-between">
+                                <span className="text-3xl font-bold text-blue-600">
+                                    {filteredApplications.length}
+                                </span>
+                                <div className="bg-blue-50 p-3 rounded-full">
+                                    <ClipboardList className="w-6 h-6 text-blue-600" />
+                                </div>
+                            </div>
+                        </div>
                     </div>
-
-                    <div className="bg-white p-4 rounded-lg shadow">
-                        <h3 className="text-sm font-medium text-gray-700">In Progress</h3>
-                        <p className="text-xl font-bold text-yellow-600">
-                            {filteredApplications.filter(app => app.status === 'interviewing').length}
-                        </p>
+    
+                    {/* In Progress Card */}
+                    <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200 hover:shadow-lg transition-all duration-300">
+                        <div className="flex flex-col space-y-2">
+                            <h3 className="text-sm font-medium text-gray-600">In Progress</h3>
+                            <div className="flex items-center justify-between">
+                                <span className="text-3xl font-bold text-yellow-600">
+                                    {filteredApplications.filter(app => app.status === 'interviewing').length}
+                                </span>
+                                <div className="bg-yellow-50 p-3 rounded-full">
+                                    <HourglassIcon className="w-6 h-6 text-yellow-600" />
+                                </div>
+                            </div>
+                        </div>
                     </div>
-
-                    <div className="bg-white p-4 rounded-lg shadow">
-                        <h3 className="text-sm font-medium text-gray-700">Responses</h3>
-                        <p className="text-2xl font-bold text-green-600">
-                            {filteredApplications.filter(app => app.status !== 'applied').length}
-                        </p>
+    
+                    {/* Responses Card */}
+                    <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200 hover:shadow-lg transition-all duration-300">
+                        <div className="flex flex-col space-y-2">
+                            <h3 className="text-sm font-medium text-gray-600">Responses</h3>
+                            <div className="flex items-center justify-between">
+                                <span className="text-3xl font-bold text-green-600">
+                                    {filteredApplications.filter(app => app.status !== 'applied').length}
+                                </span>
+                                <div className="bg-green-50 p-3 rounded-full">
+                                    <InboxIcon className="w-6 h-6 text-green-600" />
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
-
-                <div className="bg-white shadow rounded-lg max-w-full mx-auto">
-                    <div className='p-4 border-b'>
-                        <h2 className="text-lg font-semibold">Recent Applications</h2>
+    
+                {/* Applications Table Section */}
+                <div className="bg-white shadow-sm rounded-lg max-w-full mx-auto">
+                    <div className='p-4 border-b border-gray-200'>
+                        <h2 className="text-lg font-semibold text-gray-900">Recent Applications</h2>
                     </div>
-                    {loading && <div className="text-center py-4">Loading...</div>}
-
+                    
+                    {/* Loading State */}
+                    {loading && (
+                        <div className="text-center py-8">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                            <p className="text-gray-500 mt-2">Loading applications...</p>
+                        </div>
+                    )}
+    
+                    {/* Error State */}
                     {error && (
-                        <div className="text-red-600 text-center py-4">
-                            {error}
+                        <div className="text-red-600 text-center py-8 px-4">
+                            <p className="text-lg font-medium">{error}</p>
+                            <p className="text-sm text-red-500 mt-1">Please try again later</p>
                         </div>
                     )}
-
+    
+                    {/* Empty State */}
                     {!loading && !error && applications.length === 0 && (
-                        <div className="text-gray-500 text-center py-8">
-                            No applications yet
+                        <div className="text-gray-500 text-center py-12 px-4">
+                            <p className="text-lg font-medium">No applications yet</p>
+                            <p className="text-sm text-gray-400 mt-1">Add your first application to get started</p>
                         </div>
                     )}
-
+    
+                    {/* Applications Table with Search */}
                     {!loading && !error && applications.length > 0 && (
                         <>
-                            <div className="px-4">
+                            <div className="px-4 py-3">
                                 <ApplicationSearch
                                     applications={applications}
                                     onFilter={setFilteredApplications}
@@ -211,13 +261,14 @@ const Dashboard = () => {
                         </>
                     )}
                 </div>
-
+    
+                {/* Modals */}
                 <AddApplicationModal
                     isOpen={isModalOpen}
                     onClose={() => setIsModalOpen(false)}
                     onSubmit={handleAddApplication}
                 />
-
+    
                 {currentApplication && (
                     <EditApplicationModal
                         isOpen={isEditModalOpen}
@@ -226,6 +277,7 @@ const Dashboard = () => {
                         application={currentApplication}
                     />
                 )}
+    
                 {applicationToDelete && (
                     <ConfirmDeleteModal
                         isOpen={isDeleteModalOpen}
