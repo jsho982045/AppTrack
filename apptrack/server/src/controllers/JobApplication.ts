@@ -1,43 +1,54 @@
-// server/src/controllers/JobApplication.ts
 import { Email } from '../models/Email';
 import { Request, Response } from 'express';
-import { ParserService } from '../services/parser';
 import { reparseAllEmails } from '../services/gmail';
 import { TrainingEmail } from '../models/TrainingEmail';
 import { JobApplication } from '../models/JobApplication'; 
 import { checkForNewApplications } from '../services/gmail';
-import { join } from 'path';
 
-const parserService = new ParserService();
-
-export const getAllApplications = async (
-    req: Request, 
-    res: Response
-) => {
+// Core CRUD operations
+export const getAllApplications = async (req: Request, res: Response) => {
     try {
-        const applications = await JobApplication.find()
+        const userId = (req as any).user._id;
+        const applications = await JobApplication.find({ userId })
             .sort({ dateApplied: -1 });
-            // Ensures dates are properly formatted
-        const formattedApplications = applications.map(app => {
-            const appObject = app.toObject();
-            return {
-                ...appObject,
-                dateApplied: new Date(appObject.dateApplied).toISOString()
-            };
-        });
+        const formattedApplications = applications.map(app => ({
+            ...app.toObject(),
+            dateApplied: new Date(app.dateApplied).toISOString()
+        }));
         res.json(formattedApplications);
-    }catch(error) {
+    } catch(error) {
         res.status(500).json({ message: 'Error fetching applications', error });
     }
 };
 
 export const createApplication = async (req: Request, res: Response) => {
     try {
-        const newApplication = new JobApplication(req.body);
-        const savedApplication = await newApplication.save();
+        const userId = (req as any).user._id;
+        const savedApplication = await JobApplication.create({
+            ...req.body,
+            userId
+        });
         res.status(201).json(savedApplication);
-    }catch(error){
+    } catch(error) {
         res.status(400).json({ message: 'Error creating application', error});
+    }
+};
+
+export const updateApplication = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { id } = req.params;
+        const updatedApplication = await JobApplication.findByIdAndUpdate(
+            id, 
+            req.body,
+            { new: true }
+        );
+        if (!updatedApplication) {
+            res.status(404).json({ message: 'Application not found'});
+            return;
+        }
+        res.json(updatedApplication);
+    } catch (error) {
+        res.status(500).json({ message: 'Error updating application', error });
     }
 };
 
@@ -45,85 +56,67 @@ export const deleteApplication = async (req: Request, res: Response): Promise<vo
     try {
         const { id } = req.params;
         const deletedApplication = await JobApplication.findByIdAndDelete(id);
-        
         if (!deletedApplication) {
             res.status(404).json({ message: 'Application not found' });
             return;
         }
-        
         res.json({ message: 'Application deleted successfully' });
     } catch (error) {
         res.status(500).json({ message: 'Error deleting application', error });
     }
 };
 
-export const updateApplication = async (req: Request, res: Response): Promise<void> => {
-    try{
-        const { id } = req.params;
-        const updatedApplication = await JobApplication.findByIdAndUpdate(
-            id, 
-            req.body,
-            { new: true }
-        );
-
-        if(!updatedApplication) {
-            res.status(404).json({ message: 'Application not found '});
-            return;
-        }
-
-        res.json(updatedApplication);
+// Email processing operations
+export const fetchNewEmails = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const userId = (req as any).user._id;
+        console.log('Fetching new emails for userId:', userId);
+        await checkForNewApplications(userId);
+        res.json({ message: 'New emails fetched successfully' });
     } catch (error) {
-        res.status(500).json({ message: 'Error updating application', error });
+        console.error('Error fetching new emails:', error);
+        res.status(500).json({ message: 'Error fetching new emails', error });
+    }
+};
+
+export const reparseEmails = async (req: Request | string, res?: Response): Promise<void> => {
+    try {
+        const userId = typeof req === 'string' ? 
+            req : 
+            (req as Request as any).user._id;
         
-    }
-};
-
-export const processJobEmail = async (req: Request, res: Response) => {
-    try {
-        const { subject, content, from } = req.body;
-
-        const parsedJob = await parserService.parseJobEmail({
-            subject,
-            content,
-            from_email: from
-        });
-
-        const newApplication = new JobApplication(parsedJob);
-        const savedApplication = await newApplication.save();
-
-        res.status(201).json(savedApplication);
+        console.log('Reparsing emails for userId:', userId);
+        await reparseAllEmails(userId);
+        
+        if (res) {
+            res.json({ message: 'Emails reparsed successfully' });
+        }
     } catch (error) {
-        res.status(400).json({ message: 'Error processing job email', error });
+        if (res) {
+            console.error('Error reparsing emails:', error);
+            res.status(500).json({ message: 'Error reparsing emails', error });
+        } else {
+            throw error;
+        }
     }
 };
 
-export const clearApplications = async (req: Request, res: Response): Promise<void> => {
-    try {
-        await JobApplication.deleteMany({});
-        res.json({ message: 'All applications cleared' });
-    } catch (error) {
-        res.status(500).json({ message: 'Error clearing applications', error });
-    }
-};
-
-export const reparseApplications = async (req: Request, res: Response): Promise<void> => {
-    try {
-        await reparseAllEmails();
-        res.json({ message: 'All emails reparsed successfully' });
-    } catch (error) {
-        res.status(500).json({ message: 'Error reparsing applications', error });
-    }
-};
-
+// Data management
 export const clearAllCollections = async (req: Request, res: Response): Promise<void> => {
     try {
-        await JobApplication.deleteMany({});
-        await TrainingEmail.deleteMany({});
-        await Email.deleteMany({});
-        res.json({ message: 'All collections cleared' });
+        const userId = (req as any).user._id;
+        console.log('Clearing collections for userId:', userId);
+
+        await Promise.all([
+            JobApplication.deleteMany({ userId }),
+            TrainingEmail.deleteMany({ userId }),
+            Email.deleteMany({ userId }),
+        ]);
+        
+        console.log('Collections cleared successfully');
+        res.json({ message: 'Collections cleared successfully' });
     } catch (error) {
+        console.error('Error clearing collections:', error);
         res.status(500).json({ message: 'Error clearing collections', error });
     }
 };
-
-

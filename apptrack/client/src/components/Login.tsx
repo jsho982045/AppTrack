@@ -1,10 +1,10 @@
 // client/src/components/Login.tsx
-
-
 const Login = () => {
     const handleGoogleLogin = () => {
+        // Redirect to the backend's auth route which will start OAuth flow
         window.location.href = `${import.meta.env.VITE_API_URL}/auth/google`;
     };
+
     return (
         <div className="fixed inset-0 bg-gray-100 flex items-center justify-center">
             <div className="w-[400px] bg-white p-8 rounded-lg shadow-lg">
@@ -28,4 +28,4 @@ const Login = () => {
     );
 };
 
-export default Login;  // Change to default export
+export default Login;

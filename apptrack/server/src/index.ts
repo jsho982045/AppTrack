@@ -4,15 +4,17 @@ import dotenv from 'dotenv';
 import express, { Request, Response, NextFunction, RequestHandler} from 'express';
 import mongoose from 'mongoose';
 import { MongoClient } from 'mongodb';
-import { Token } from './models/Token';
 import { getApplicationEmails } from './controllers/Email';
 import { checkForNewApplications } from './services/gmail';
 import { getGmailClient, getGoogleAuthURL, getGoogleTokens } from './auth/google';
-import { getAllApplications, createApplication, deleteApplication, updateApplication, clearAllCollections, reparseApplications } from './controllers/JobApplication';
+import { getAllApplications, createApplication, deleteApplication, updateApplication, clearAllCollections, reparseEmails, fetchNewEmails } from './controllers/JobApplication';
 import { initiateGoogleAuth, handleGoogleCallback, getAuthenticatedUser, logout } from './controllers/Auth';
 import session from 'express-session';
 import { User } from './models/User';
 import MongoStore from 'connect-mongo';
+import { Email } from './models/Email';
+import { JobApplication } from './models/JobApplication';
+import { TrainingEmail } from './models/TrainingEmail';
 
 // Load environment variables
 dotenv.config();
@@ -99,28 +101,32 @@ const handleAuthError = (error: any, req: Request, res: Response, next: NextFunc
 // Auth routes
 app.get('/auth/google', initiateGoogleAuth);
 app.get('/auth/google/callback', handleGoogleCallback);
-app.get('/api/auth/user', getAuthenticatedUser as RequestHandler);
+app.get('/api/auth/user', requireAuth, getAuthenticatedUser as RequestHandler);
 app.post('/api/auth/logout', logout);
 
 // Protected routes
 app.get('/api/applications', requireAuth, getAllApplications as RequestHandler);
 app.get('/api/applications/:id/emails', requireAuth, getApplicationEmails as RequestHandler);
 app.post('/api/applications', requireAuth, createApplication as RequestHandler);
-app.post('/api/collections/clear', requireAuth, clearAllCollections as RequestHandler);
-app.post('/api/applications/reparse', requireAuth, reparseApplications as RequestHandler);
 app.put('/api/applications/:id', requireAuth, updateApplication as RequestHandler);
 app.delete('/api/applications/:id', requireAuth, deleteApplication as RequestHandler);
 
-app.post('/api/check-emails', requireAuth, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+// Email processing routes
+app.post('/api/emails/fetch', requireAuth, fetchNewEmails as RequestHandler);
+app.post('/api/emails/reparse', requireAuth, reparseEmails as RequestHandler);
+app.post('/api/collections/clear', requireAuth, clearAllCollections as RequestHandler);
+
+app.post('/api/check-emails', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
     try {
-        await checkForNewApplications();
+        const userId = (req as any).user._id;
+        await checkForNewApplications(userId);
         res.json({ message: 'Email check completed' });
     } catch (error: any) {
         next(error);
     }
-});
+}) as RequestHandler;
 
-app.post('/api/dev/clear-sessions', async (req, res) => {
+app.post('/api/dev/clear-sessions', requireAuth, async (req, res) => {
     try {
         if (!mongoose.connection.db) {
             throw new Error('Database not connected');
@@ -132,13 +138,50 @@ app.post('/api/dev/clear-sessions', async (req, res) => {
     }
 });
 
+app.post('/api/dev/migrate-data', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        // Use the authenticated user instead of finding any user
+        const user = (req as any).user;
+        console.log('Migrating data for user:', user.email);
+
+        // Update all collections
+        const updates = await Promise.all([
+            JobApplication.updateMany(
+                { userId: { $exists: false } },  // Find docs without userId
+                { $set: { userId: user._id } }   // Set them to current user's ID
+            ),
+            Email.updateMany(
+                { userId: { $exists: false } },
+                { $set: { userId: user._id } }
+            ),
+            TrainingEmail.updateMany(
+                { userId: { $exists: false } },
+                { $set: { userId: user._id } }
+            )
+        ]);
+
+        res.json({ 
+            message: 'Data migration completed',
+            user: user.email,
+            results: {
+                jobApplications: updates[0].modifiedCount,
+                emails: updates[1].modifiedCount,
+                trainingEmails: updates[2].modifiedCount
+            }
+        });
+    } catch (error) {
+        next(error);
+    }
+}) as RequestHandler;
+
 app.get('/api/emails/training', requireAuth, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         if (!mongoose.connection.db) {
             throw new Error('Database connection not established');
         }
+        const userId = (req as any).user._id;
         const collection = mongoose.connection.db.collection('trainingemails');
-        const emails = await collection.find({}).toArray();
+        const emails = await collection.find({ userId }).toArray();
         res.json(emails);
     } catch (error) {
         next(error);
@@ -148,7 +191,7 @@ app.get('/api/emails/training', requireAuth, async (req: Request, res: Response,
 // Error handling middleware
 app.use(handleAuthError);
 
-// Automatic email checking
+/* Automatic email checking
 const checkEmails = async (): Promise<void> => {
     try {
         console.log('Checking for new job applications...');
@@ -162,8 +205,8 @@ const checkEmails = async (): Promise<void> => {
     }
 };
 
-setInterval(checkEmails, 30 * 60 * 1000);
-checkEmails().catch(console.error);
+*/
+
 
 // Start server
 app.listen(port, () => {

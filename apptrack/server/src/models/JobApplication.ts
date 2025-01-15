@@ -11,6 +11,7 @@ export interface JobApplication {
 }
 
 export interface IJobApplicationDocument extends JobApplication {
+    userId: mongoose.Types.ObjectId;
     emailConfirmation?: string;
     lastUpdated: Date;
 }
@@ -45,6 +46,18 @@ const jobApplicationSchema = new mongoose.Schema<IJobApplicationDocument>({
     emailId:{
         type: String,
         ref: 'Email'
+    },
+    userId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true,
+        index: true
+    },
+});
+
+jobApplicationSchema.pre('find', function() {
+    if (!this.getQuery().userId) {
+        throw new Error('Must provide userId for queries');
     }
 });
 

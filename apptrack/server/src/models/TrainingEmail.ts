@@ -3,6 +3,7 @@
 import mongoose from "mongoose";
 
 export interface ITrainingEmail {
+    userId: mongoose.Types.ObjectId;
     subject: string;
     content: string;
     from: string;
@@ -18,6 +19,7 @@ export interface ITrainingEmail {
 }
 
 const trainingEmailSchema = new mongoose.Schema<ITrainingEmail>({
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     subject: { type: String, required: true },
     content: { type: String, required: true },
     from: { type: String, required: true },

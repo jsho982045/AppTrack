@@ -1,7 +1,8 @@
 // server/src/models/Email.ts
-import mongoose, { trusted } from 'mongoose';
+import mongoose, { mongo, trusted } from 'mongoose';
 
 export interface IEmail {
+    userId: mongoose.Types.ObjectId;
     id?: string;
     subject: string;
     from: string;
@@ -36,7 +37,13 @@ const emailSchema = new mongoose.Schema<IEmail>({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'JobApplication',
         required: true
-    }
+    },
+    userId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true,
+        index: true
+    },
 });
 
 export const Email = mongoose.model<IEmail>('Email', emailSchema);

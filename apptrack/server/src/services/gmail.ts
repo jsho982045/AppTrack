@@ -7,12 +7,21 @@ import { google, gmail_v1 } from 'googleapis';
 import { getGmailClient } from '../auth/google';
 import { TrainingEmail } from '../models/TrainingEmail';
 import { JobApplication } from '../models/JobApplication';
+import { User } from '../models/User';
 
 
 const ML_SERVICE_URL = 'http://127.0.0.1:8000';
 
-export const checkForNewApplications = async () => {
+export const checkForNewApplications = async (userId: string) => {
     try {
+        const user = await User.findById(userId);
+        if (!user || !user.tokens.refresh_token) {
+            throw Object.assign(new Error('No authentication token found'), {
+                code: 'AUTH_REQUIRED'
+            });
+        }
+
+        const gmail = await getGmailClient(userId);
         const tokenDoc = await Token.findOne();
         
         if (!tokenDoc) {
@@ -20,8 +29,6 @@ export const checkForNewApplications = async () => {
                 code: 'AUTH_REQUIRED'
             });
         }
-
-        const gmail = await getGmailClient();
         
         const response = await gmail.users.messages.list({
             userId: 'me',
@@ -52,6 +59,7 @@ export const checkForNewApplications = async () => {
                 const fullBody = decodeEmailBody(payload);
 
                 const trainingEmail = new TrainingEmail ({
+                    userId,
                     subject,
                     content: fullBody,
                     from,
@@ -88,10 +96,12 @@ export const checkForNewApplications = async () => {
                     if (!existingApp) {
                         const newApp = await JobApplication.create({
                             ...parsedJob,
+                            userId,
                             emailId: message.id,
                             dateApplied: new Date(headers.find((h) => h.name === 'Date')?.value || '')
                         });
                         await Email.create({
+                            userId,
                             subject,
                             from,
                             date: new Date(headers.find((h) => h.name === 'Date')?.value || ''),
@@ -155,14 +165,26 @@ export const parseJobEmail = async (emailData: {
     }
 };
 
-export const reparseAllEmails = async () => {
+export const reparseAllEmails = async (userId: string) => {
     try {
+        console.log('Starting reparse for userId:', userId);
         // Get all training emails
-        const trainingEmails = await TrainingEmail.find({ isApplicationEmail: true });
-        console.log(`Found ${trainingEmails.length} job application emails to process`);
+        const trainingEmails = await TrainingEmail.find({ 
+            isApplicationEmail: true,
+            userId
+         });
+        
+         console.log('Training emails query results:', {
+            count: trainingEmails.length,
+            sample: trainingEmails.length > 0 ? {
+                id: trainingEmails[0]._id,
+                subject: trainingEmails[0].subject,
+                userId: trainingEmails[0].userId
+            } : 'No emails found'
+        });
 
         // Clear existing job applications
-        await JobApplication.deleteMany({});
+        //await JobApplication.deleteMany({ userId });
         console.log('Cleared existing job applications');
 
         // Process each email
@@ -184,10 +206,12 @@ export const reparseAllEmails = async () => {
                     // Create new job application
                     const newApp = await JobApplication.create({
                         ...parsedJob,
+                        userId,
                         emailId: email.emailId,
                         dateApplied: email.receivedDate
                     });
                     console.log('Processed application:', {
+                        userId,
                         company: newApp.company,
                         position: newApp.position,
                         dateApplied: newApp.dateApplied

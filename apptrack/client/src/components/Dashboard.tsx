@@ -99,9 +99,48 @@ const Dashboard = () => {
         loadApplications();
     }, []);
 
+    const triggerDataMigration = async () => {
+        try {
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/dev/migrate-data`, {
+                method: 'POST',
+                credentials: 'include'  // Important for sending cookies
+            });
+            const data = await response.json();
+            console.log('Migration result:', data);
+            // Reload applications after migration
+            const updatedApplications = await fetchApplications();
+            setApplications(updatedApplications);
+        } catch (error) {
+            console.error('Migration failed:', error);
+        }
+    };
+
+    const handleClearAllData = async () => {
+        try {
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/collections/clear`, {
+                method: 'POST',
+                credentials: 'include'
+            });
+            if (response.ok) {
+                // Refresh applications list
+                const data = await fetchApplications();
+                setApplications(data);
+            }
+        } catch (error) {
+            console.error('Failed to clear data:', error);
+            setError('Failed to clear data');
+        }
+    };
+
     return (
         <div className="min-h-screen bg-gray-100">
             <Navbar />
+            <button
+                onClick={handleClearAllData}
+                className="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600"
+            >
+                Clear Data
+            </button>
             <div style={{ width: 'min(95vw, 1600px)' }} className="mx-auto py-6">
                 <div className="flex justify-between items-center mb-6">
                     <h1 className="text-2xl font-bold text-gray-900">
