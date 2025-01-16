@@ -44,11 +44,16 @@ app.use(session({
     saveUninitialized: false,
     store: MongoStore.create({
         mongoUrl: process.env.MONGODB_URI!,
+        touchAfter: 24 * 3600
     }),
     cookie: {
-        maxAge: 1000 * 60 * 60 * 24 * 7, // 1 week
-        secure: process.env.NODE_ENV === 'production'
-    }
+        maxAge: undefined,
+        expires: undefined,
+        secure: process.env.NODE_ENV === 'production',
+        httpOnly: true,
+        sameSite: 'strict'
+    },
+    unset: 'destroy'
 }));
 
 // CORS configuration
@@ -62,20 +67,28 @@ app.use(cors({
 // Middleware
 app.use(express.json());
 app.use((req, res, next) => {
-    console.log(`${req.method} request to ${req.url}`);
+    res.set({
+        'X-XSS-Protection': '1; mode=block',
+        'X-Frame-Options': 'DENY',
+        'X-Content-Type-Options': 'nosniff',
+        'Strict-Transport-Security': 'max-age=31536000; includeSubDomains'
+    });
     next();
 });
 
 // Auth middleware
 const requireAuth = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        if (!req.session.userId) {
+        if (!req.session || !req.session.userId) {
             res.status(401).json({ error: 'Authentication required' });
             return;
         }
 
         const user = await User.findById(req.session.userId);
         if (!user) {
+            req.session.destroy((err) => {
+                if (err) console.error('Session destruction error:', err);
+            });
             res.status(401).json({ error: 'User not found' });
             return;
         }

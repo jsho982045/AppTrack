@@ -74,6 +74,10 @@ export const handleGoogleCallback = async (req: Request, res: Response) => {
                 await checkForNewApplications(user._id.toString());
                 console.log('Starting initial email parsing...');
                 await reparseEmails(user._id.toString());
+
+                await User.findByIdAndUpdate(user._id, {
+                    $set: { lastFetchTimestamp: new Date()}
+                });
             } catch (fetchError) {
                 console.error('Error in initial email fetch:', fetchError);
             }
@@ -121,11 +125,20 @@ export const getAuthenticatedUser = async (req: Request, res: Response) => {
 
 export const logout = (req: Request, res: Response) => {
     console.log('Processing logout request...');
+
     req.session.destroy((err: Error) => {
         if (err) {
             console.error('Logout error:', err);
             return res.status(500).json({ message: 'Failed to logout' });
         }
+
+        res.clearCookie('connect.sid', {
+            path: '/',
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'strict'
+        });
+        
         console.log('Logout successful');
         res.json({ message: 'Logged out successfully' });
     });

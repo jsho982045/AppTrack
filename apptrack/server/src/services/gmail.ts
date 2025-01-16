@@ -21,6 +21,11 @@ export const checkForNewApplications = async (userId: string) => {
             });
         }
 
+        const existingEmailIds = new Set(
+            (await TrainingEmail.find({ userId }, 'emailId'))
+                .map(doc => doc.emailId)
+        );
+
         const gmail = await getGmailClient(userId);
         const tokenDoc = await Token.findOne();
         
@@ -38,8 +43,15 @@ export const checkForNewApplications = async (userId: string) => {
 
         const messages = response.data.messages || [];
         
+        let newEmailCount = 0;
         for (const message of messages) {
             try {
+
+                if(message.id && existingEmailIds.has(message.id)) {
+                    console.log(`Skipping existing email: ${message.id}`);
+                    continue;
+                }
+
                 const email = await gmail.users.messages.get({
                     userId: 'me',
                     id: message.id!,
@@ -71,6 +83,7 @@ export const checkForNewApplications = async (userId: string) => {
                 });
 
                 await trainingEmail.save();
+                newEmailCount++;
 
                 const parsedJob = await parseJobEmail({
                     subject,
@@ -87,13 +100,29 @@ export const checkForNewApplications = async (userId: string) => {
 
                     // Check if this application already exists
                     const existingApp = await JobApplication.findOne({
-                        company: parsedJob.company,
-                        dateApplied: {
-                            $gte: new Date(Date.now() - 24 * 60 * 60 * 1000), // Within last 24 hours
-                        },
+                        $or:[
+                            {
+                                company: parsedJob.company,
+                                userId,
+                                emailId: message.id
+                            },
+                            {
+                                company: parsedJob.company,
+                                userId,
+                                dateApplied: {
+                                    $gte: new Date(Date.now() - 24 * 60 * 60 * 1000), // Within last 24 hours
+                                }
+                            }
+                        ]
                     });
 
                     if (!existingApp) {
+                        console.log('Creating new application:', {
+                            company: parsedJob.company,
+                            emailId: message.id,
+                            userId
+                        });
+                        
                         const newApp = await JobApplication.create({
                             ...parsedJob,
                             userId,

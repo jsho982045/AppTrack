@@ -107,14 +107,52 @@ export const clearAllCollections = async (req: Request, res: Response): Promise<
         const userId = (req as any).user._id;
         console.log('Clearing collections for userId:', userId);
 
-        await Promise.all([
+        // Initial counts
+        const initialCounts = {
+            jobApps: await JobApplication.countDocuments({}),
+            trainingEmails: await TrainingEmail.countDocuments({}),
+            emails: await Email.countDocuments({}) 
+        };
+        console.log('Initial counts:', initialCounts);
+
+        // Fix orphaned documents first
+        const fixOrphanedDocs = await TrainingEmail.updateMany(
+            { userId: { $exists: false } },
+            { $set: { userId } }
+        );
+        console.log('Fixed orphaned documents:', fixOrphanedDocs.modifiedCount);
+
+        // Delete all documents for this user
+        const deleteResults = await Promise.all([
             JobApplication.deleteMany({ userId }),
-            TrainingEmail.deleteMany({ userId }),
-            Email.deleteMany({ userId }),
+            TrainingEmail.deleteMany({ userId }), // This will now delete the previously orphaned docs too
+            Email.deleteMany({ userId })
         ]);
         
-        console.log('Collections cleared successfully');
-        res.json({ message: 'Collections cleared successfully' });
+        // Verify no documents remain
+        const remainingCounts = {
+            jobApps: await JobApplication.countDocuments({}),
+            trainingEmails: await TrainingEmail.countDocuments({}),
+            emails: await Email.countDocuments({})
+        };
+        
+        console.log('Deletion results:', {
+            jobApps: deleteResults[0].deletedCount,
+            trainingEmails: deleteResults[1].deletedCount,
+            emails: deleteResults[2].deletedCount
+        });
+        console.log('Remaining documents:', remainingCounts);
+
+        res.json({
+            message: 'Collections cleared successfully',
+            initialCounts,
+            deletedCounts: {
+                jobApps: deleteResults[0].deletedCount,
+                trainingEmails: deleteResults[1].deletedCount,
+                emails: deleteResults[2].deletedCount
+            },
+            remainingCounts
+        });
     } catch (error) {
         console.error('Error clearing collections:', error);
         res.status(500).json({ message: 'Error clearing collections', error });

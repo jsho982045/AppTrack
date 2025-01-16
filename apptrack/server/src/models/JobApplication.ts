@@ -8,6 +8,11 @@ export interface JobApplication {
     dateApplied: Date;
     status: 'applied' | 'interviewing' | 'rejected' | 'accepted'
     emailId?: string;
+    lastFetchTimestamp: {
+        type: Date,
+        required: true,
+        default: Date
+    }
 }
 
 export interface IJobApplicationDocument extends JobApplication {
@@ -53,6 +58,11 @@ const jobApplicationSchema = new mongoose.Schema<IJobApplicationDocument>({
         required: true,
         index: true
     },
+    lastFetchTimestamp: {
+        type: Date,
+        required: true,
+        default: Date.now
+    }
 });
 
 jobApplicationSchema.pre('find', function() {
