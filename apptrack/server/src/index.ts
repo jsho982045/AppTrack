@@ -20,7 +20,7 @@ import { TrainingEmail } from './models/TrainingEmail';
 dotenv.config();
 
 const app = express();
-const port = process.env.PORT || 3001;
+const port = Number(process.env.PORT) || 3001;
 
 
 // Database connection
@@ -222,6 +222,6 @@ const checkEmails = async (): Promise<void> => {
 
 
 // Start server
-app.listen(port, () => {
+app.listen(port, '0.0.0.0.', () => {
     console.log(`Server running on port ${port}`);
 });
