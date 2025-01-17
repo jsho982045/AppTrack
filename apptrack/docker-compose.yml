@@ -1,0 +1,24 @@
+version: '3.8'
+services:
+  client:
+    build: ./client
+    ports:
+      - "5173:5173"
+    depends_on:
+      - server
+      - ml-service
+
+  server:
+    build: ./server
+    ports:
+      - "3001:3001"
+    depends_on:
+      - ml-service
+    environment:
+      - MONGODB_URI=${MONGODB_URI}
+      - ML_SERVICE_URL=http://ml-service:8000
+
+  ml-service:
+    build: ./server/ml-service
+    ports:
+      - "8000:8000"
